@@ -32,8 +32,12 @@ export default function TooltipLayer() {
       }
     };
 
+    // Wurde der aktuelle Tooltip durch Halten (Touch/Stift) gezeigt?
+    let byPress = false;
+
     const hide = () => {
       clearTimer();
+      byPress = false;
       current.current = null;
       setTip(null);
     };
@@ -111,12 +115,31 @@ export default function TooltipLayer() {
       }
       clearTimer();
       current.current = target;
-      timer.current = window.setTimeout(() => show(target), 400);
+      timer.current = window.setTimeout(() => {
+        byPress = true;
+        show(target);
+      }, 400);
     };
     const onUp = () => {
       clearTimer();
       if (shownRef.current) {
         grace = window.setTimeout(hide, 1100);
+        // Wer die Erklärung gelesen hat, wollte nicht auslösen:
+        // den folgenden Klick einmalig verschlucken (D3)
+        if (byPress && current.current) {
+          const el = current.current;
+          const suppress = (ev: Event) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            el.removeEventListener("click", suppress, true);
+          };
+          el.addEventListener("click", suppress, true);
+          window.setTimeout(
+            () => el.removeEventListener("click", suppress, true),
+            800,
+          );
+        }
+        byPress = false;
       }
     };
 
