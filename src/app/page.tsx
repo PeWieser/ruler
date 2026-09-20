@@ -27,10 +27,19 @@ export default function Page() {
   const openFile = useCallback(async (file: File) => {
     setLoading(true);
     try {
-      const img = await loadImageFile(file);
-      useEditor.getState().setLoaded(img);
+      if (/\.masswerk$/i.test(file.name)) {
+        // Dokument statt Bild: ganze Sitzung wieder hereinladen (P3)
+        await useEditor.getState().loadDocumentText(await file.text());
+      } else {
+        const img = await loadImageFile(file);
+        useEditor.getState().setLoaded(img);
+      }
     } catch {
-      useEditor.getState().setBanner("Die Datei konnte nicht als Bild gelesen werden.");
+      useEditor.getState().setBanner(
+        /\.masswerk$/i.test(file.name)
+          ? tr("Dokument konnte nicht gelesen werden.")
+          : tr("Die Datei konnte nicht als Bild gelesen werden."),
+      );
     } finally {
       setLoading(false);
     }
@@ -45,10 +54,10 @@ export default function Page() {
       const img = await loadImageFile(file);
       useEditor.getState().setLoaded(img);
       useEditor.getState().setBanner(
-        "Beispiel geladen – Maßstab am Stahl-Lineal kalibrieren, z. B. 0–10 cm.",
+        tr("Beispiel geladen – Maßstab am Stahl-Lineal kalibrieren, z. B. 0–10 cm."),
       );
     } catch {
-      useEditor.getState().setBanner("Beispielbild konnte nicht geladen werden.");
+      useEditor.getState().setBanner(tr("Beispielbild konnte nicht geladen werden."));
     } finally {
       setLoading(false);
     }

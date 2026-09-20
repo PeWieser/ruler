@@ -7,7 +7,7 @@ import { drawMeasurement, type RenderEnv } from "./render";
 import { imgReg } from "./store";
 import { t, useLocale } from "@/lib/i18n";
 
-function downloadBlob(blob: Blob, filename: string) {
+export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -152,6 +152,16 @@ export async function exportXLSX(
   wsMeta["!cols"] = [{ wch: 24 }, { wch: 40 }];
   XLSX.utils.book_append_sheet(wb, wsMeta, "Info");
   XLSX.writeFile(wb, `${baseName(imageName)}_messwerte.xlsx`);
+}
+
+// ── MaßWerk-Dokument (.masswerk) ────────────────────────────────────────────
+
+/** Speichert das serialisierte Dokument als Datei – der ganze Zustand,
+ *  ein JSON, eine Endung. Ein Dokument ist kein Export, sondern eine Sitzung,
+ *  die man wieder mitbringen kann. */
+export function exportDocument(json: string, imageName: string) {
+  const blob = new Blob([json], { type: "application/json" });
+  downloadBlob(blob, `${baseName(imageName)}.masswerk`);
 }
 
 // ── PNG mit eingebrannten Messungen (volle Auflösung) ────────────────────────

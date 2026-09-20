@@ -801,6 +801,28 @@ function BildTab() {
                     : `${fmtNumber(st.analysisResult.totalAreaPx)} px²`}
                 </span>
               </div>
+              {st.analysisResult.blobs.length > 0 && (
+                <div className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-[var(--mw-border)] bg-[var(--mw-surface-3)]">
+                  <div className="sticky top-0 bg-[var(--mw-surface-3)] px-2.5 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--mw-text-ghost)]">
+                    {tr("Einzelobjekte")}
+                  </div>
+                  {st.analysisResult.blobs.map((b, i) => (
+                    <div
+                      key={i}
+                      className="flex items-baseline justify-between px-2.5 py-[3px] text-[11.5px]"
+                    >
+                      <span className="text-[var(--mw-text-faint)]">
+                        {tr("Objekt {n}", { n: i + 1 })}
+                      </span>
+                      <span className="font-tabular text-[var(--mw-text-dim)]">
+                        {st.calibration && st.calibration.unit !== "px"
+                          ? `${fmtNumber(b.areaPx / (st.calibration.pixelsPerUnit ** 2), 2)} ${st.calibration.unit}²`
+                          : `${fmtNumber(b.areaPx, 0)} px²`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

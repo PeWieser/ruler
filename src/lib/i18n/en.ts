@@ -244,6 +244,19 @@ export const EN: Record<string, string> = {
     "Sample loaded – calibrate on the steel ruler, e.g. 0–10 cm.",
   "Beispielbild konnte nicht geladen werden.": "The sample image could not be loaded.",
 
+  // ── Dokumente (P3) & Analyse-Details (P7) ─────────────────────────────────
+  "MaßWerk-Dokument": "MaßWerk document",
+  "Bild, Messungen, Maßstab, Ausrichtung – eine Datei, wieder öffnbar":
+    "Image, measurements, scale, orientation – one file, reopenable",
+  "Dokument geladen – Sitzung wiederhergestellt.":
+    "Document loaded – session restored.",
+  "Dokument konnte nicht gelesen werden.": "The document could not be read.",
+  "Einzelobjekte": "Individual objects",
+  "Objekt {n}": "Object {n}",
+  "Mittelpunkt": "Center",
+  "Z": "Z",
+  "Y": "Y",
+
   // ── Messgrößen & Export ───────────────────────────────────────────────────
   "Länge": "Length",
   "Abstand": "Distance",

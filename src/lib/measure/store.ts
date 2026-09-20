@@ -39,7 +39,11 @@ import {
   straightenDelta,
   type Orientation,
 } from "./orientation";
-import { toStorageDataUrl, type LoadedImage } from "./loadImage";
+import {
+  loadFromDataUrl,
+  toStorageDataUrl,
+  type LoadedImage,
+} from "./loadImage";
 import { t } from "@/lib/i18n";
 
 // ── Nicht-reaktive Bild-Registry (Canvas-Quellen & Capture) ──────────────────
@@ -136,6 +140,8 @@ export interface AnalysisResult {
   totalAreaPx: number;
   /** Schwerpunkte in Bildkoordinaten */
   centroids: Pt[];
+  /** Einzelobjekte, absteigend nach Fläche */
+  blobs: { areaPx: number; c: Pt }[];
 }
 
 interface ViewCmd {
@@ -182,6 +188,10 @@ interface EditorState {
 
   // ─ Bild ─
   setLoaded: (img: LoadedImage) => void;
+  /** Ganzes Dokument als JSON (.masswerk) – oder null ohne Bild. */
+  serializeDocument: () => string | null;
+  /** Dokument wieder hereinladen; wirft bei ungültigem Inhalt. */
+  loadDocumentText: (text: string) => Promise<void>;
   clearSession: () => void;
   bumpImg: () => void;
   // ─ Werkzeuge ─
@@ -465,6 +475,85 @@ export const useEditor = create<EditorState>()((set, get) => {
           : null,
       });
       rectifyBackup = null;
+      persist();
+    },
+
+    serializeDocument: () => {
+      const s = get();
+      if (!s.image || !s.imageDataUrl) return null;
+      return JSON.stringify({
+        format: "masswerk",
+        version: 1,
+        savedAt: new Date().toISOString(),
+        image: { name: s.image.name, dataUrl: s.imageDataUrl },
+        measurements: s.measurements,
+        calibration: s.calibration,
+        orientation: s.orientation,
+        lensK: s.lensK,
+        filters: s.filters,
+        scaleBar: s.scaleBar,
+        snap: s.snap,
+      });
+    },
+
+    loadDocumentText: async (text) => {
+      const doc = JSON.parse(text) as {
+        format?: string;
+        version?: number;
+        image?: { name?: string; dataUrl?: string };
+        measurements?: Measurement[];
+        calibration?: Calibration | null;
+        orientation?: Orientation;
+        lensK?: number;
+        filters?: Filters;
+        scaleBar?: boolean;
+        snap?: boolean;
+      };
+      if (
+        doc?.format !== "masswerk" ||
+        doc.version !== 1 ||
+        !doc.image?.dataUrl ||
+        !Array.isArray(doc.measurements)
+      ) {
+        throw new Error("invalid document");
+      }
+      const source = await loadFromDataUrl(doc.image.dataUrl);
+      const w = source.naturalWidth || (source.width as number);
+      const h = source.naturalHeight || (source.height as number);
+      const s = get();
+      imgReg.original = source;
+      imgReg.processed = null;
+      imgReg.capture = null;
+      imgReg.orientFull = null;
+      analysisReg.bitmap = null;
+      analysisReg.count = 0;
+      set({
+        image: {
+          name: doc.image.name || "dokument.masswerk",
+          width: w,
+          height: h,
+        },
+        imageDataUrl: doc.image.dataUrl,
+        imgVersion: s.imgVersion + 1,
+        measurements: doc.measurements,
+        calibration: doc.calibration ?? null,
+        orientation: doc.orientation ?? { ...IDENTITY_ORIENTATION },
+        lensK: doc.lensK ?? 0,
+        filters: doc.filters ?? { ...DEFAULT_FILTERS },
+        scaleBar: doc.scaleBar ?? true,
+        snap: doc.snap ?? true,
+        past: [],
+        future: [],
+        selectedId: null,
+        draft: null,
+        pendingCalib: null,
+        analysis: { ...s.analysis, active: false, roi: null },
+        analysisResult: null,
+        rectify: null,
+        horizon: null,
+        tool: "select",
+        banner: t("Dokument geladen – Sitzung wiederhergestellt."),
+      });
       persist();
     },
 

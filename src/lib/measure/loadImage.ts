@@ -128,7 +128,10 @@ export function imageFileFromDataTransfer(dt: DataTransfer): File | null {
   const files = Array.from(dt.files ?? []);
   return (
     files.find(
-      (f) => f.type.startsWith("image/") || /\.tiff?$/i.test(f.name),
+      (f) =>
+        f.type.startsWith("image/") ||
+        /\.tiff?$/i.test(f.name) ||
+        /\.masswerk$/i.test(f.name),
     ) ?? null
   );
 }

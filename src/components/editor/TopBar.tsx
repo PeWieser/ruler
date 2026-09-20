@@ -18,6 +18,7 @@ import {
   PanelRightOpen,
   Redo2,
   Ruler,
+  Save,
   Undo2,
   ZoomIn,
   ZoomOut,
@@ -25,7 +26,12 @@ import {
 import { useEditor } from "@/lib/measure/store";
 import { useLocale, useT } from "@/lib/i18n";
 import { useView } from "./CanvasStage";
-import { exportAnnotatedPNG, exportCSV, exportXLSX } from "@/lib/measure/export";
+import {
+  exportAnnotatedPNG,
+  exportCSV,
+  exportDocument,
+  exportXLSX,
+} from "@/lib/measure/export";
 import { fmtNumber } from "@/lib/measure/geometry";
 
 function Wordmark() {
@@ -163,7 +169,7 @@ export default function TopBar({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*,.tif,.tiff"
+          accept="image/*,.tif,.tiff,.masswerk"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -198,7 +204,7 @@ export default function TopBar({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*,.tif,.tiff"
+          accept="image/*,.tif,.tiff,.masswerk"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -482,6 +488,22 @@ export default function TopBar({
                 <FileSpreadsheet size={15.5} className="text-[var(--mw-text-faint)]" />
                 <span className="flex-1">{tr("Messwerttabelle")}</span>
                 <span className="text-[11px] text-[var(--mw-text-ghost)]">Excel</span>
+              </button>
+              <div className="mx-1 my-1 h-px bg-[var(--mw-border)]" />
+              <button
+                type="button"
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)]"
+                data-tip={tr("Bild, Messungen, Maßstab, Ausrichtung – eine Datei, wieder öffnbar")}
+                data-side="left"
+                onClick={() => {
+                  setMenuOpen(false);
+                  const json = st.serializeDocument();
+                  if (json && st.image) exportDocument(json, st.image.name);
+                }}
+              >
+                <Save size={15.5} className="text-[var(--mw-text-faint)]" />
+                <span className="flex-1">{tr("MaßWerk-Dokument")}</span>
+                <span className="text-[11px] text-[var(--mw-text-ghost)]">.masswerk</span>
               </button>
             </div>
           )}

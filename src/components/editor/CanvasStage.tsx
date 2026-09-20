@@ -29,6 +29,7 @@ import {
   type Measurement,
   type MeasurementKind,
   type Pt,
+  type Rect,
   type ToolId,
 } from "@/lib/measure/types";
 
@@ -60,7 +61,19 @@ type DragState =
   | { type: "move"; id: string; grab: Pt; start: Pt[]; moved: boolean }
   | { type: "annotate"; start: Pt; cur: Pt }
   | { type: "roi"; start: Pt; cur: Pt }
+  | { type: "roi-move"; grab: Pt; orig: Rect; moved: boolean }
+  | { type: "roi-scale"; anchor: Pt; orig: Rect; moved: boolean }
   | null;
+
+/** Die vier Eckgriffe eines Analyse-ROIs (Bildkoordinaten). */
+function roiCorners(r: Rect): Pt[] {
+  return [
+    { x: r.x, y: r.y },
+    { x: r.x + r.w, y: r.y },
+    { x: r.x + r.w, y: r.y + r.h },
+    { x: r.x, y: r.y + r.h },
+  ];
+}
 
 interface Hit {
   m: Measurement;
@@ -699,6 +712,14 @@ export default function CanvasStage() {
         y: (b.cy + ry0) / cs,
       }));
       const totalAreaPx = blobs.reduce((s2, b) => s2 + b.area, 0) / (cs * cs);
+      // Einzelobjekte: absteigend nach Fläche – die Liste im Panel soll die
+      // größten Treffer zuerst zeigen (Menschen lesen Rankings, keine Sets).
+      const blobList = [...blobs]
+        .sort((u, v) => v.area - u.area)
+        .map((b) => ({
+          areaPx: b.area / (cs * cs),
+          c: { x: (b.cx + rx0) / cs, y: (b.cy + ry0) / cs },
+        }));
       // Tint-Overlay: nur Kontur, keine Fläche (wirkt professioneller)
       const tint = new ImageData(rw, rh);
       for (let y = 0; y < rh; y++) {
@@ -753,6 +774,7 @@ export default function CanvasStage() {
           count: blobs.length,
           totalAreaPx,
           centroids,
+          blobs: blobList,
         });
         scheduleDraw();
       });
@@ -951,6 +973,22 @@ export default function CanvasStage() {
         octx.setLineDash([env.strokeW * 3, env.strokeW * 2.4]);
         octx.strokeRect(r.x, r.y, r.w, r.h);
         octx.restore();
+        // Eckgriffe: sichtbar, sobald der Bereich steht – Versprechen:
+        // „Dieses Ding kannst du noch anfassen." (P7)
+        if (!roiDraftRef.current) {
+          const hs = 4.2 / t.scale;
+          octx.save();
+          for (const c of roiCorners(r)) {
+            octx.beginPath();
+            octx.rect(c.x - hs, c.y - hs, hs * 2, hs * 2);
+            octx.fillStyle = "#ffffff";
+            octx.fill();
+            octx.strokeStyle = "#32ADE6";
+            octx.lineWidth = 1.4 / t.scale;
+            octx.stroke();
+          }
+          octx.restore();
+        }
       }
     }
 
@@ -1469,6 +1507,27 @@ export default function CanvasStage() {
       return;
     }
     if (st.analysis.active) {
+      // Bestehende ROI bleibt greifbar: Ecken skalieren, Körper verschiebt.
+      // Erst ein Klick außerhalb startet einen neuen Bereich (P7).
+      const r = st.analysis.roi;
+      if (r) {
+        const ht = (touchRef.current ? 16 : 10) / tRef.current.scale;
+        const corners = roiCorners(r);
+        const hi = corners.findIndex((c) => dist(p, c) < ht);
+        if (hi >= 0) {
+          dragRef.current = {
+            type: "roi-scale",
+            anchor: corners[(hi + 2) % 4],
+            orig: r,
+            moved: false,
+          };
+          return;
+        }
+        if (p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h) {
+          dragRef.current = { type: "roi-move", grab: p, orig: r, moved: false };
+          return;
+        }
+      }
       roiDraftRef.current = { start: p, cur: p };
       dragRef.current = { type: "roi", start: p, cur: p };
       return;
@@ -1636,9 +1695,22 @@ export default function CanvasStage() {
     // dem Anmerkungswerkzeug, das jetzt Vorhandenes auswählt statt übermalt.
     const cont = containerRef.current;
     if (cont && !drag && !spaceRef.current && st.horizon === null) {
-      const grabbable =
-        (st.tool === "select" || st.tool === "annotate") && !!hitTest(p);
-      cont.style.cursor = grabbable ? "move" : cursor;
+      let hoverCursor = "";
+      if (st.analysis.active && st.analysis.roi) {
+        const r = st.analysis.roi;
+        const ht = (touchRef.current ? 16 : 10) / tRef.current.scale;
+        const hi = roiCorners(r).findIndex((c) => dist(p, c) < ht);
+        if (hi === 0 || hi === 2) hoverCursor = "nwse-resize";
+        else if (hi === 1 || hi === 3) hoverCursor = "nesw-resize";
+        else if (p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h)
+          hoverCursor = "move";
+      }
+      if (!hoverCursor) {
+        const grabbable =
+          (st.tool === "select" || st.tool === "annotate") && !!hitTest(p);
+        hoverCursor = grabbable ? "move" : cursor;
+      }
+      cont.style.cursor = hoverCursor;
     }
 
     if (drag) {
@@ -1678,6 +1750,30 @@ export default function CanvasStage() {
       } else if (drag.type === "roi") {
         drag.cur = p;
         roiDraftRef.current = { start: drag.start, cur: p };
+      } else if (drag.type === "roi-move" || drag.type === "roi-scale") {
+        const img = st.image;
+        if (!drag.moved && dist(p, drag.type === "roi-move" ? drag.grab : drag.anchor) > 2 / tRef.current.scale) {
+          st.pushHistory();
+          drag.moved = true;
+        }
+        let next: Rect;
+        if (drag.type === "roi-move") {
+          const dx = p.x - drag.grab.x;
+          const dy = p.y - drag.grab.y;
+          const w = img ? img.width : 1e9;
+          const h = img ? img.height : 1e9;
+          next = {
+            x: clamp(drag.orig.x + dx, 0, Math.max(0, w - drag.orig.w)),
+            y: clamp(drag.orig.y + dy, 0, Math.max(0, h - drag.orig.h)),
+            w: drag.orig.w,
+            h: drag.orig.h,
+          };
+        } else {
+          const r2 = rectFrom2(drag.anchor, p);
+          const min = 6 / tRef.current.scale;
+          next = { ...r2, w: Math.max(min, r2.w), h: Math.max(min, r2.h) };
+        }
+        st.setAnalysis({ roi: next });
       }
     }
 

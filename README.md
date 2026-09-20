@@ -1,5 +1,7 @@
 # MaßWerk
 
+**English** · [Deutsch](README.de.md)
+
 **Measure images like using a caliper and a ruler — directly in the browser, entirely locally.**
 
 Open an image, calibrate against a known distance, then read distances, areas,
@@ -14,17 +16,22 @@ client-side: no pixel ever leaves the device.
   angle, rectangle, ellipse, circle from 3 points, polygon area, counting,
   note & arrow
 - **Image orientation:** 90° steps and straighten ±45° like Apple Photos —
-  measurements and scale are rotated along exactly
+  measurements and scale rotate along exactly; auto-straighten by drawing one
+  line along an edge or horizon, with a thirds grid while adjusting
 - **Image enhancement** (brightness, contrast, gamma, sharpen, grayscale),
   **lens correction** (barrel/pincushion) and **perspective rectification**
   via four corners
-- **Automatic counting** through threshold analysis of a region
-  (including total area and adoption as a count measurement)
+- **Automatic counting** through threshold analysis of a region: total area,
+  per-object areas, movable/resizable region; adoptable as a count measurement
+- **Documents:** save and reopen complete sessions as `.masswerk` file
+  (image, measurements, scale, orientation, filters)
 - **Edge snapping** with sub-pixel accuracy and a loupe while placing points
 - **Export:** PNG with burned-in measurements and scale bar,
   measurement table as CSV or Excel
 - **Formats:** JPG, PNG, WebP, BMP, GIF, TIFF (including very high resolution)
 - Sessions are restored locally; undo/redo across all measurements
+- **Localized:** German and English, switchable in the top bar
+- **Touch-ready:** pinch-zoom, two-finger pan, larger hit targets
 - **Keyboard-driven:** press `?` for the full shortcut overview
 
 ## Getting started
@@ -34,9 +41,8 @@ npm install
 npm run dev      # http://localhost:3000
 ```
 
-No image at hand? Use **“Load sample image”** in the empty state — a
-metrologically exact target (ruler at 10 px/mm, washers, 45° angle),
-a photographic workbench scene (`public/samples/beispiel.jpg`) with a steel
+No image at hand? Use **“Load sample image”** in the empty state: a
+photographic workbench scene (`public/samples/beispiel.jpg`) with a steel
 ruler, caliper and machined blocks – a natural target for calibration,
 straightening and object counting.
 
