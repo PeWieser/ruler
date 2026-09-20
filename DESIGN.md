@@ -3,8 +3,9 @@
 > Review-Perspektive: Apple-Produktdesign (Pages / Keynote / Fotos).
 > Leitfrage bei jeder Entscheidung: *Würde Jony Ive das so lassen – oder wegwerfen?*
 >
-> Status: **Phase 1 (Ausrichtung) und Phase 2 (Design-Pass) sind umgesetzt.**
-> Phase 3 ist der bewusste Rückstand – begründet, priorisiert, nicht vergessen.
+> Status: **Phase 1 (Ausrichtung) und Phase 2 (Design-Pass) sind umgesetzt,**
+> dazu P1 aus Phase 3 vorgezogen (Kürzel-Überlagerung, siehe 1.9).
+> Der Rest von Phase 3 ist bewusster Rückstand – begründet, priorisiert, nicht vergessen.
 
 ---
 
@@ -138,6 +139,17 @@ keine gelogenen Skalen.
   TopBar-Toggle und im grünen Einrast-Impuls auf der Bühne. Dreifach gemoppelt
   ist nicht dreifach klar.
 
+### 1.9 Kürzel-Überlagerung & Screenreader (P1 vorgezogen)
+
+- **„?" öffnet die vollständige Kürzel-Übersicht** – gruppiert in Werkzeuge,
+  Ansicht, Zeichnen, Bearbeiten; als Dialog mit `aria-modal`, schließt über
+  Esc, Hintergrund-Klick oder X. Solange sie offen ist, besitzt sie die
+  Tastatur allein (kein versehentliches Werkzeug-Umschalten dahinter).
+- Einstiegspunkte: Taste `?` und ein ruhiger Hilfe-Button in der Kopfleiste.
+  Eine Pro-App erklärt sich auf Zuruf – ohne Handbuch, ohne Tooltipsuche.
+- Banner werden per `role="status"` höflich angekündigt (erster Baustein
+  der Barrierefreiheits-Vertiefung, Rest siehe P6).
+
 ---
 
 ## 2 · Gestrichen (und warum)
@@ -157,10 +169,6 @@ keine gelogenen Skalen.
 
 ## 3 · Rückstand (Phase 3) – priorisiert
 
-**P1 · Kürzel-Überlagerung (`?`).** Eine tastaturgetriebene Pro-App zeigt ihre
-Kürzel auf Zuruf (Figma-Vorbild). Alle Kürzel existieren bereits; es fehlt
-nur die Liste als Overlay inkl. Suchfeld.
-
 **P2 · GPU-Bildpipeline.** Filter + Objektivkorrektur laufen heute CPU-seitig
 über `getImageData`; beim Geraderichten *mit* aktiven Filtern entsteht eine
 spürbare Latenz. Ein einziger WebGL-Pass (Rotation + Radial + LUT) macht alle
@@ -178,6 +186,8 @@ Alle Kopftexte sind bereits kurz genug, um sie sauber zu übersetzen.
 
 **P6 · Barrierefreiheit vertiefen.** Fokus-Reihenfolge im Canvas,
 ARIA-Live-Region für Messwerte, Kontrast-Check der Ghost-Töne im Light-Mode.
+(Banner-Live-Region und Dialog-Semantik der Kürzel-Übersicht sind gesetzt,
+siehe 1.9.)
 
 **P7 · Analyse-Feinschliff.** ROI nach dem Aufziehen verschiebbar/
 skalierbar machen; Ergebnisliste mit Einzelobjekt-Flächen statt nur Summe.

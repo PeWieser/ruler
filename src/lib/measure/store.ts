@@ -162,6 +162,7 @@ interface EditorState {
   rectifyUndo: boolean;
   noteEditingId: string | null;
   activeCountId: string | null;
+  helpOpen: boolean;
   past: Snap[];
   future: Snap[];
   viewCmd: ViewCmd;
@@ -224,6 +225,7 @@ interface EditorState {
   setScaleBar: (v: boolean) => void;
   setSnap: (v: boolean) => void;
   setNoteEditing: (id: string | null) => void;
+  setHelpOpen: (v: boolean) => void;
   fireViewCmd: (cmd: ViewCmd["cmd"]) => void;
   setBanner: (b: string | null) => void;
   setExportBusy: (v: boolean) => void;
@@ -404,6 +406,7 @@ export const useEditor = create<EditorState>()((set, get) => {
     rectifyUndo: false,
     noteEditingId: null,
     activeCountId: null,
+    helpOpen: false,
     past: [],
     future: [],
     viewCmd: { seq: 0, cmd: "fit" },
@@ -1029,6 +1032,7 @@ export const useEditor = create<EditorState>()((set, get) => {
       persist();
     },
     setNoteEditing: (id) => set({ noteEditingId: id }),
+    setHelpOpen: (v) => set({ helpOpen: v }),
     fireViewCmd: (cmd) => set((s) => ({ viewCmd: { seq: s.viewCmd.seq + 1, cmd } })),
     setBanner: (b) => set({ banner: b }),
     setExportBusy: (v) => set({ exportBusy: v }),

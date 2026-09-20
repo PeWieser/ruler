@@ -10,6 +10,7 @@ import SidePanel from "@/components/editor/SidePanel";
 import StatusBar from "@/components/editor/StatusBar";
 import EmptyState from "@/components/editor/EmptyState";
 import TooltipLayer from "@/components/editor/TooltipLayer";
+import ShortcutOverlay from "@/components/editor/ShortcutOverlay";
 import { useEditor } from "@/lib/measure/store";
 import { imageFileFromDataTransfer, loadImageFile } from "@/lib/measure/loadImage";
 
@@ -115,6 +116,7 @@ export default function Page() {
       </div>
       <StatusBar />
       <TooltipLayer />
+      <ShortcutOverlay />
 
       {dragOver && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-[#0B0B0E]/70 backdrop-blur-[3px]">
@@ -134,6 +136,7 @@ export default function Page() {
       {banner && (
         <div className="animate-banner-in fixed left-1/2 top-14 z-50 -translate-x-1/2">
           <div
+            role="status"
             className="rounded-full border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] px-4 py-2 text-[12.5px] text-[var(--mw-text-dim)] shadow-xl"
             style={{ boxShadow: "0 12px 28px var(--mw-shadow)" }}
           >

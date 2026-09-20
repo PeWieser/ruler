@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  CircleHelp,
   Download,
   FileSpreadsheet,
   FileText,
@@ -347,6 +348,15 @@ export default function TopBar({
           )}
         </div>
 
+        <button
+          type="button"
+          className={iconBtn}
+          data-tip="Tastaturkürzel"
+          data-key="?"
+          onClick={() => st.setHelpOpen(true)}
+        >
+          <CircleHelp size={16} />
+        </button>
         <button
           type="button"
           className={iconBtn}

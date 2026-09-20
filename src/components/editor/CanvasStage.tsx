@@ -1456,12 +1456,24 @@ export default function CanvasStage() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       const s = useEditor.getState();
+      // Ist die Kürzel-Übersicht offen, gehört ihr die Tastatur allein
+      if (s.helpOpen) {
+        if (e.key === "Escape" || e.key === "?") {
+          e.preventDefault();
+          s.setHelpOpen(false);
+        }
+        return;
+      }
       if (e.code === "Space" && !isFormTarget(e.target)) {
         spaceRef.current = true;
         e.preventDefault();
         return;
       }
       if (isFormTarget(e.target)) return;
+      if (e.key === "?") {
+        s.setHelpOpen(true);
+        return;
+      }
 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
