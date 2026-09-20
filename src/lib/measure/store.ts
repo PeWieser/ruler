@@ -1,0 +1,908 @@
+// ── MaßWerk · Zentraler Store (Zustand) ─────────────────────────────────────
+"use client";
+
+import { create } from "zustand";
+import {
+  DEFAULT_FILTERS,
+  KIND_LABEL,
+  PALETTE,
+  uid,
+  type Calibration,
+  type CalibrationProfile,
+  type Filters,
+  type Measurement,
+  type MeasurementKind,
+  type Pt,
+  type Rect,
+  type ToolId,
+  UNIT_TO_MM,
+  filtersActive,
+} from "./types";
+import { homography } from "./geometry";
+import {
+  distortPointFwd,
+  distortPointInv,
+  rectifiedSize,
+  transformPoints,
+  warpPerspective,
+} from "./imagefx";
+import type { LoadedImage } from "./loadImage";
+
+// ── Nicht-reaktive Bild-Registry (Canvas-Quellen & Capture) ──────────────────
+export interface ImageRegistry {
+  original: CanvasImageSource | null;
+  /** Nach radialer Objektivkorrektur – identisch mit original bei k=0 */
+  lensCorrected: CanvasImageSource | null;
+  processed: CanvasImageSource | null;
+  /** für Edge-Snap & Analyse: verarbeitetes Bild, begrenzte Auflösung */
+  capture: ImageData | null;
+  /** Capture-Pixel pro Bild-Pixel */
+  captureScale: number;
+  /** Aktive Linskorrektur (wird von Stage beim Aufbau gesetzt) */
+  lensK: number;
+}
+
+export const imgReg: ImageRegistry = {
+  original: null,
+  lensCorrected: null,
+  processed: null,
+  capture: null,
+  captureScale: 1,
+  lensK: 0,
+};
+
+export interface AnalysisMask {
+  bitmap: ImageBitmap | null;
+  roi: Rect;
+  count: number;
+  totalAreaPx: number;
+  centroids: Pt[];
+}
+
+export const analysisReg: AnalysisMask = {
+  bitmap: null,
+  roi: { x: 0, y: 0, w: 0, h: 0 },
+  count: 0,
+  totalAreaPx: 0,
+  centroids: [],
+};
+
+interface RectifyBackup {
+  original: CanvasImageSource;
+  image: ImageMeta;
+  measurements: Measurement[];
+  calibration: Calibration | null;
+  lensK: number;
+}
+
+let rectifyBackup: RectifyBackup | null = null;
+
+// ── Snapshot für Undo/Redo ───────────────────────────────────────────────────
+interface Snap {
+  measurements: Measurement[];
+  calibration: Calibration | null;
+}
+
+const HISTORY_LIMIT = 60;
+
+export interface ImageMeta {
+  name: string;
+  width: number;
+  height: number;
+}
+
+export type PanelTab = "mess" | "kalib" | "bild";
+
+export interface AnalysisState {
+  active: boolean;
+  roi: Rect | null;
+  threshold: number;
+  autoThreshold: boolean;
+  dark: boolean; // true = dunkle Objekte suchen
+  minArea: number;
+  maxArea: number;
+  /** Schließt kleine Lücken/Reflexionen, damit z. B. Lineale oder glänzende
+   *  Schrauben nicht in mehrere Teilobjekte zerfallen (Capture-Pixel-Radius). */
+  closeRadius: number;
+}
+
+export interface AnalysisResult {
+  count: number;
+  /** Gesamtfläche in Bild-Pixeln² */
+  totalAreaPx: number;
+  /** Schwerpunkte in Bildkoordinaten */
+  centroids: Pt[];
+}
+
+interface ViewCmd {
+  seq: number;
+  cmd: "fit" | "in" | "out" | "100";
+}
+
+interface EditorState {
+  image: ImageMeta | null;
+  imageDataUrl: string | null;
+  imgVersion: number;
+  tool: ToolId;
+  measurements: Measurement[];
+  selectedId: string | null;
+  draft: Pt[] | null;
+  pendingCalib: { a: Pt; b: Pt } | null;
+  calibration: Calibration | null;
+  profiles: CalibrationProfile[];
+  filters: Filters;
+  lensK: number;
+  scaleBar: boolean;
+  snap: boolean;
+  panelTab: PanelTab;
+  panelOpen: boolean;
+  analysis: AnalysisState;
+  analysisResult: AnalysisResult | null;
+  rectify: { active: boolean; points: Pt[] } | null;
+  rectifyUndo: boolean;
+  noteEditingId: string | null;
+  activeCountId: string | null;
+  past: Snap[];
+  future: Snap[];
+  viewCmd: ViewCmd;
+  banner: string | null;
+  exportBusy: boolean;
+
+  // ─ Bild ─
+  setLoaded: (img: LoadedImage) => void;
+  clearSession: () => void;
+  bumpImg: () => void;
+  // ─ Werkzeuge ─
+  setTool: (t: ToolId) => void;
+  // ─ Messungen ─
+  pushHistory: () => void;
+  undo: () => void;
+  redo: () => void;
+  addDraftPoint: (p: Pt) => void;
+  setDraftLast: (p: Pt) => void;
+  cancelDraft: () => void;
+  commitDraft: () => void;
+  addCountPoint: (p: Pt) => void;
+  addNote: (p: Pt) => void;
+  addArrow: (a: Pt, b: Pt) => void;
+  updatePoints: (id: string, pts: Pt[]) => void;
+  updateText: (id: string, text: string) => void;
+  rename: (id: string, name: string) => void;
+  recolor: (id: string, color: string) => void;
+  setVisible: (id: string, v: boolean) => void;
+  remove: (id: string) => void;
+  removeMany: (ids: string[]) => void;
+  select: (id: string | null) => void;
+  // ─ Kalibrierung ─
+  setPendingCalib: (v: { a: Pt; b: Pt } | null) => void;
+  commitCalibration: (realValue: number, unit: Calibration["unit"]) => void;
+  clearCalibration: () => void;
+  setCalibUnit: (unit: Calibration["unit"]) => void;
+  saveProfile: (name: string) => void;
+  applyProfile: (id: string) => void;
+  deleteProfile: (id: string) => void;
+  // ─ Bild & Analyse ─
+  setFilter: (f: Partial<Filters>) => void;
+  resetFilters: () => void;
+  setLensK: (k: number) => void;
+  resetLens: () => void;
+  setAnalysis: (a: Partial<AnalysisState>) => void;
+  setAnalysisResult: (r: AnalysisResult | null) => void;
+  adoptAnalysis: () => void;
+  exitAnalysis: () => void;
+  enterRectify: () => void;
+  addRectifyPoint: (p: Pt) => void;
+  applyRectify: () => void;
+  undoRectify: () => void;
+  cancelRectify: () => void;
+  // ─ UI ─
+  setPanelTab: (t: PanelTab) => void;
+  setPanelOpen: (v: boolean) => void;
+  setScaleBar: (v: boolean) => void;
+  setSnap: (v: boolean) => void;
+  setNoteEditing: (id: string | null) => void;
+  fireViewCmd: (cmd: ViewCmd["cmd"]) => void;
+  setBanner: (b: string | null) => void;
+  setExportBusy: (v: boolean) => void;
+}
+
+// ── Persistenz (LocalStorage) ────────────────────────────────────────────────
+const SESSION_KEY = "mw.session.v1";
+const PROFILES_KEY = "mw.profiles.v1";
+
+interface PersistedSession {
+  image: ImageMeta | null;
+  imageDataUrl: string | null;
+  measurements: Measurement[];
+  calibration: Calibration | null;
+  filters: Filters;
+  scaleBar: boolean;
+  snap: boolean;
+}
+
+function loadPersisted(): PersistedSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedSession;
+  } catch {
+    return null;
+  }
+}
+
+function loadProfiles(): CalibrationProfile[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PROFILES_KEY);
+    return raw ? (JSON.parse(raw) as CalibrationProfile[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function queuePersist(get: () => EditorState) {
+  if (typeof window === "undefined") return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    const s = get();
+    const data: PersistedSession = {
+      image: s.image,
+      imageDataUrl: s.imageDataUrl,
+      measurements: s.measurements,
+      calibration: s.calibration,
+      filters: s.filters,
+      scaleBar: s.scaleBar,
+      snap: s.snap,
+    };
+    try {
+      window.localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    } catch {
+      /* Speicher voll – ignorieren */
+    }
+    try {
+      window.localStorage.setItem(PROFILES_KEY, JSON.stringify(s.profiles));
+    } catch {
+      /* ignore */
+    }
+  }, 400);
+}
+
+const persisted = typeof window !== "undefined" ? loadPersisted() : null;
+
+function newMeasurement(
+  kind: MeasurementKind,
+  points: Pt[],
+  existing: Measurement[],
+  text?: string,
+): Measurement {
+  const n = existing.filter((m) => m.kind === kind).length + 1;
+  return {
+    id: uid(),
+    kind,
+    name: `${KIND_LABEL[kind]} ${n}`,
+    points,
+    color: PALETTE[existing.length % PALETTE.length],
+    visible: true,
+    text,
+    createdAt: Date.now(),
+  };
+}
+
+/** Wie viele Klicks braucht ein Werkzeug, bis es fertig ist? (Poly = manuell) */
+export const TOOL_CLICKS: Partial<Record<ToolId, number>> = {
+  line: 2,
+  lot: 3,
+  angle: 3,
+  crossangle: 4,
+  circle3: 3,
+  rect: 2,
+  ellipse: 2,
+  calibrate: 2,
+};
+
+const TOOL_OF_DRAFT: Partial<Record<ToolId, MeasurementKind>> = {
+  line: "line",
+  polyline: "polyline",
+  lot: "lot",
+  angle: "angle",
+  crossangle: "crossangle",
+  rect: "rect",
+  ellipse: "ellipse",
+  circle3: "circle3",
+  polygon: "polygon",
+};
+
+const DEFAULT_ANALYSIS: AnalysisState = {
+  active: false,
+  roi: null,
+  threshold: 128,
+  autoThreshold: true,
+  dark: true,
+  minArea: 10,
+  maxArea: 999999,
+  closeRadius: 2,
+};
+
+export const useEditor = create<EditorState>()((set, get) => {
+  const persist = () => queuePersist(get);
+
+  const snapshot = (): Snap => ({
+    measurements: get().measurements,
+    calibration: get().calibration,
+  });
+
+  return {
+    image: persisted?.image ?? null,
+    imageDataUrl: persisted?.imageDataUrl ?? null,
+    imgVersion: 0,
+    tool: "select",
+    measurements: persisted?.measurements ?? [],
+    selectedId: null,
+    draft: null,
+    pendingCalib: null,
+    calibration: persisted?.calibration ?? null,
+    profiles: loadProfiles(),
+    filters: persisted?.filters ?? { ...DEFAULT_FILTERS },
+    lensK: 0,
+    scaleBar: persisted?.scaleBar ?? true,
+    snap: persisted?.snap ?? true,
+    panelTab: "mess",
+    panelOpen: true,
+    analysis: { ...DEFAULT_ANALYSIS },
+    analysisResult: null,
+    rectify: null,
+    rectifyUndo: false,
+    noteEditingId: null,
+    activeCountId: null,
+    past: [],
+    future: [],
+    viewCmd: { seq: 0, cmd: "fit" },
+    banner: null,
+    exportBusy: false,
+
+    // ─────────────────────────── Bild ───────────────────────────
+    setLoaded: (img) => {
+      const prev = get();
+      const sameDims =
+        prev.image &&
+        prev.image.width === img.width &&
+        prev.image.height === img.height;
+      imgReg.original = img.source;
+      imgReg.processed = null;
+      imgReg.capture = null;
+      const reset = !sameDims && (prev.measurements.length > 0 || prev.calibration);
+      set({
+        image: { name: img.name, width: img.width, height: img.height },
+        imageDataUrl: img.storageDataUrl,
+        imgVersion: prev.imgVersion + 1,
+        measurements: sameDims ? prev.measurements : [],
+        calibration: sameDims ? prev.calibration : null,
+        selectedId: sameDims ? prev.selectedId : null,
+        draft: null,
+        pendingCalib: null,
+        analysis: { ...DEFAULT_ANALYSIS },
+        analysisResult: null,
+        rectify: null,
+        rectifyUndo: false,
+        past: [],
+        future: [],
+        panelTab: sameDims ? prev.panelTab : reset ? "kalib" : prev.calibration ? "mess" : "kalib",
+        banner: reset
+          ? "Neues Bild – Messungen wurden zurückgesetzt. Bitte Maßstab prüfen oder neu setzen."
+          : null,
+      });
+      rectifyBackup = null;
+      persist();
+    },
+
+    clearSession: () => {
+      imgReg.original = null;
+      imgReg.processed = null;
+      imgReg.capture = null;
+      analysisReg.bitmap = null;
+      set({
+        image: null,
+        imageDataUrl: null,
+        measurements: [],
+        selectedId: null,
+        draft: null,
+        pendingCalib: null,
+        calibration: null,
+        filters: { ...DEFAULT_FILTERS },
+        lensK: 0,
+        analysis: { ...DEFAULT_ANALYSIS },
+        analysisResult: null,
+        rectify: null,
+        rectifyUndo: false,
+        past: [],
+        future: [],
+        banner: null,
+      });
+      persist();
+    },
+
+    bumpImg: () => set((s) => ({ imgVersion: s.imgVersion + 1 })),
+
+    // ─────────────────────────── Werkzeuge ───────────────────────────
+    setTool: (t) =>
+      set((s) => ({
+        tool: t,
+        draft: null,
+        noteEditingId: null,
+        pendingCalib: t === "calibrate" ? s.pendingCalib : null,
+        activeCountId: t === "count" ? null : s.activeCountId,
+        panelOpen: t === "calibrate" ? true : s.panelOpen,
+        panelTab: t === "calibrate" ? "kalib" : s.panelTab,
+      })),
+
+    // ─────────────────────────── Verlauf ───────────────────────────
+    pushHistory: () =>
+      set((s) => ({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+      })),
+
+    undo: () => {
+      const s = get();
+      if (s.past.length === 0) return;
+      const prevState = s.past[s.past.length - 1];
+      set({
+        past: s.past.slice(0, -1),
+        future: [...s.future, { measurements: s.measurements, calibration: s.calibration }],
+        measurements: prevState.measurements,
+        calibration: prevState.calibration,
+        selectedId:
+          s.selectedId && prevState.measurements.some((m) => m.id === s.selectedId)
+            ? s.selectedId
+            : null,
+        pendingCalib: null,
+        draft: null,
+      });
+      persist();
+    },
+
+    redo: () => {
+      const s = get();
+      if (s.future.length === 0) return;
+      const next = s.future[s.future.length - 1];
+      set({
+        future: s.future.slice(0, -1),
+        past: [...s.past, { measurements: s.measurements, calibration: s.calibration }],
+        measurements: next.measurements,
+        calibration: next.calibration,
+        selectedId:
+          s.selectedId && next.measurements.some((m) => m.id === s.selectedId)
+            ? s.selectedId
+            : null,
+      });
+      persist();
+    },
+
+    // ─────────────────────────── Messungen ───────────────────────────
+    addDraftPoint: (p) =>
+      set((s) => {
+        const pts = [...(s.draft ?? []), p];
+        // Auto-Commit bei Werkzeugen mit fester Punktzahl
+        if (s.tool === "calibrate" && pts.length === 2) {
+          return { draft: null, pendingCalib: { a: pts[0], b: pts[1] } };
+        }
+        const need = TOOL_CLICKS[s.tool];
+        const kind = TOOL_OF_DRAFT[s.tool];
+        if (need && kind && pts.length >= need) {
+          const m = newMeasurement(kind, pts, s.measurements);
+          return {
+            past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+            future: [],
+            measurements: [...s.measurements, m],
+            selectedId: m.id,
+            draft: null,
+          };
+        }
+        return { draft: pts };
+      }),
+
+    setDraftLast: (p) =>
+      set((s) => {
+        if (!s.draft || s.draft.length === 0) return { draft: [p] };
+        return { draft: [...s.draft.slice(0, -1), p] };
+      }),
+
+    cancelDraft: () => set({ draft: null, pendingCalib: null }),
+
+    commitDraft: () => {
+      const s = get();
+      if (!s.draft) return;
+      const kind = TOOL_OF_DRAFT[s.tool];
+      if (!kind) return;
+      if (kind === "polygon" && s.draft.length < 3) return;
+      if ((kind === "polyline" || kind === "line") && s.draft.length < 2) return;
+      const m = newMeasurement(kind, s.draft, s.measurements);
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        measurements: [...s.measurements, m],
+        selectedId: m.id,
+        draft: null,
+      });
+      persist();
+    },
+
+    addCountPoint: (p) => {
+      const s = get();
+      const active = s.activeCountId
+        ? s.measurements.find((m) => m.id === s.activeCountId && m.kind === "count")
+        : null;
+      if (active) {
+        set({
+          measurements: s.measurements.map((m) =>
+            m.id === active.id ? { ...m, points: [...m.points, p] } : m,
+          ),
+        });
+        persist();
+        return;
+      }
+      const m = newMeasurement("count", [p], s.measurements);
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        measurements: [...s.measurements, m],
+        selectedId: m.id,
+        activeCountId: m.id,
+      });
+      persist();
+    },
+
+    addNote: (p) => {
+      const s = get();
+      const m = newMeasurement("note", [p], s.measurements, "");
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        measurements: [...s.measurements, m],
+        selectedId: m.id,
+        noteEditingId: m.id,
+      });
+      persist();
+    },
+
+    addArrow: (a, b) => {
+      const s = get();
+      const m = newMeasurement("arrow", [a, b], s.measurements, "");
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        measurements: [...s.measurements, m],
+        selectedId: m.id,
+        noteEditingId: m.id,
+      });
+      persist();
+    },
+
+    updatePoints: (id, pts) => {
+      set((s) => ({
+        measurements: s.measurements.map((m) =>
+          m.id === id ? { ...m, points: pts } : m,
+        ),
+      }));
+      persist();
+    },
+
+    updateText: (id, text) => {
+      set((s) => ({
+        measurements: s.measurements.map((m) => (m.id === id ? { ...m, text } : m)),
+        noteEditingId: null,
+      }));
+      persist();
+    },
+
+    rename: (id, name) => {
+      set((s) => ({
+        measurements: s.measurements.map((m) => (m.id === id ? { ...m, name } : m)),
+      }));
+      persist();
+    },
+
+    recolor: (id, color) => {
+      set((s) => ({
+        measurements: s.measurements.map((m) => (m.id === id ? { ...m, color } : m)),
+      }));
+      persist();
+    },
+
+    setVisible: (id, v) => {
+      set((s) => ({
+        measurements: s.measurements.map((m) => (m.id === id ? { ...m, visible: v } : m)),
+      }));
+      persist();
+    },
+
+    remove: (id) => {
+      const s = get();
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        measurements: s.measurements.filter((m) => m.id !== id),
+        selectedId: s.selectedId === id ? null : s.selectedId,
+        activeCountId: s.activeCountId === id ? null : s.activeCountId,
+        noteEditingId: s.noteEditingId === id ? null : s.noteEditingId,
+      });
+      persist();
+    },
+
+    removeMany: (ids) => {
+      const s = get();
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        measurements: s.measurements.filter((m) => !ids.includes(m.id)),
+        selectedId: s.selectedId && ids.includes(s.selectedId) ? null : s.selectedId,
+      });
+      persist();
+    },
+
+    select: (id) => set({ selectedId: id, noteEditingId: null }),
+
+    // ─────────────────────────── Kalibrierung ───────────────────────────
+    setPendingCalib: (v) => set({ pendingCalib: v }),
+
+    commitCalibration: (realValue, unit) => {
+      const s = get();
+      const p = s.pendingCalib;
+      if (!p || realValue <= 0) return;
+      const px = Math.hypot(p.b.x - p.a.x, p.b.y - p.a.y);
+      if (px < 2) return;
+      const firstCalibration = !s.calibration;
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        calibration: { pixelsPerUnit: px / realValue, unit },
+        pendingCalib: null,
+        tool: firstCalibration ? "line" : s.tool,
+        banner: firstCalibration
+          ? "Maßstab gesetzt – Sie können jetzt messen."
+          : null,
+      });
+      persist();
+    },
+
+    clearCalibration: () => {
+      const s = get();
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        calibration: null,
+      });
+      persist();
+    },
+
+    setCalibUnit: (unit) => {
+      const s = get();
+      if (!s.calibration) return;
+      const old = s.calibration.unit;
+      if (old === unit) return;
+      const ppu =
+        (s.calibration.pixelsPerUnit * UNIT_TO_MM[unit]) / UNIT_TO_MM[old];
+      set({ calibration: { pixelsPerUnit: ppu, unit } });
+      persist();
+    },
+
+    saveProfile: (name) => {
+      const s = get();
+      if (!s.calibration || !name.trim()) return;
+      const profile: CalibrationProfile = {
+        id: uid(),
+        name: name.trim(),
+        pixelsPerUnit: s.calibration.pixelsPerUnit,
+        unit: s.calibration.unit,
+      };
+      set({ profiles: [...s.profiles, profile] });
+      persist();
+    },
+
+    applyProfile: (id) => {
+      const s = get();
+      const p = s.profiles.find((x) => x.id === id);
+      if (!p) return;
+      set({
+        calibration: { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit },
+        banner: `Profil „${p.name}“ angewendet.`,
+      });
+      persist();
+    },
+
+    deleteProfile: (id) => {
+      set((s) => ({ profiles: s.profiles.filter((p) => p.id !== id) }));
+      persist();
+    },
+
+    // ─────────────────────────── Bild & Analyse ───────────────────────────
+    setFilter: (f) => {
+      set((s) => ({ filters: { ...s.filters, ...f } }));
+      persist();
+    },
+
+    resetFilters: () => {
+      set({ filters: { ...DEFAULT_FILTERS } });
+      persist();
+    },
+
+    setLensK: (k) => {
+      const s = get();
+      const img = s.image;
+      const oldK = s.lensK;
+      if (img && Math.abs(k - oldK) > 1e-9 && s.measurements.length > 0) {
+        const w = img.width;
+        const h = img.height;
+        // Messpunkte bleiben am selben Bildinhalt "kleben": zuerst zurück in
+        // den unveränderlichen Rohkoordinaten-Raum, dann mit dem neuen
+        // Korrekturwert wieder in den sichtbaren (korrigierten) Raum.
+        const measurements = s.measurements.map((m) => ({
+          ...m,
+          points: m.points.map((p) => {
+            const raw = distortPointInv(p, w, h, oldK);
+            return distortPointFwd(raw, w, h, k);
+          }),
+        }));
+        const warnCalib =
+          !!s.calibration && Math.abs(oldK) < 1e-5 && Math.abs(k) >= 1e-5;
+        set({
+          lensK: k,
+          measurements,
+          banner: warnCalib
+            ? "Maßstab nach Objektivkorrektur prüfen – Pixelabstände haben sich verändert."
+            : s.banner,
+        });
+      } else {
+        set({ lensK: k });
+      }
+      persist();
+    },
+    resetLens: () => {
+      get().setLensK(0);
+    },
+
+    setAnalysis: (a) =>
+      set((s) => ({ analysis: { ...s.analysis, ...a } })),
+
+    setAnalysisResult: (r) => set({ analysisResult: r }),
+
+    adoptAnalysis: () => {
+      const s = get();
+      const res = s.analysisResult;
+      if (!res || res.centroids.length === 0) return;
+      const m = newMeasurement("count", res.centroids, s.measurements);
+      m.name = `Zählung (Analyse) ${s.measurements.filter((x) => x.kind === "count").length}`;
+      set({
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
+        future: [],
+        measurements: [...s.measurements, m],
+        selectedId: m.id,
+        panelTab: "mess",
+        banner: `${res.count} Objekte als Zählung übernommen.`,
+      });
+      get().exitAnalysis();
+      persist();
+    },
+
+    exitAnalysis: () => {
+      analysisReg.bitmap = null;
+      analysisReg.count = 0;
+      set((s) => ({
+        analysis: { ...s.analysis, active: false, roi: null },
+        analysisResult: null,
+      }));
+    },
+
+    enterRectify: () =>
+      set({
+        rectify: { active: true, points: [] },
+        tool: "select",
+        draft: null,
+        analysis: { ...DEFAULT_ANALYSIS },
+      }),
+
+    addRectifyPoint: (p) => {
+      const s = get();
+      if (!s.rectify) return;
+      const points = [...s.rectify.points, p].slice(0, 4);
+      set({ rectify: { active: true, points } });
+      if (points.length === 4) get().applyRectify();
+    },
+
+    applyRectify: () => {
+      const s = get();
+      const lensSource = imgReg.lensCorrected ?? imgReg.original;
+      if (!s.rectify || s.rectify.points.length !== 4 || !s.image || !lensSource)
+        return;
+      const quad = s.rectify.points;
+      const { w, h } = rectifiedSize(quad);
+      const dst: Pt[] = [
+        { x: 0, y: 0 },
+        { x: w, y: 0 },
+        { x: w, y: h },
+        { x: 0, y: h },
+      ];
+      const H = homography(quad, dst);
+      // Objektivkorrektur zuerst anwenden (falls aktiv), dann perspektivisch entzerren
+      const warped = warpPerspective(lensSource, H, w, h);
+      if (!warped) {
+        set({ rectify: null, banner: "Entzerrung fehlgeschlagen (WebGL nicht verfügbar)." });
+        return;
+      }
+      rectifyBackup = {
+        original: imgReg.original!,
+        image: s.image,
+        measurements: s.measurements,
+        calibration: s.calibration,
+        lensK: s.lensK,
+      };
+      // Die Objektivkorrektur ist nun im Bild eingebrannt – Regler zurücksetzen
+      imgReg.original = warped;
+      imgReg.lensCorrected = null;
+      imgReg.processed = null;
+      imgReg.capture = null;
+      const measured = s.measurements.map((m) => ({
+        ...m,
+        points: transformPoints(m.points, H),
+      }));
+      set({
+        image: { ...s.image, width: w, height: h },
+        measurements: measured,
+        lensK: 0,
+        rectify: null,
+        rectifyUndo: true,
+        imgVersion: s.imgVersion + 1,
+        past: [],
+        future: [],
+        banner: "Bild entzerrt – Maßstab prüfen oder neu kalibrieren.",
+      });
+      persist();
+    },
+
+    undoRectify: () => {
+      if (!rectifyBackup) return;
+      imgReg.original = rectifyBackup.original;
+      imgReg.lensCorrected = null;
+      imgReg.processed = null;
+      imgReg.capture = null;
+      set((s) => ({
+        image: rectifyBackup!.image,
+        measurements: rectifyBackup!.measurements,
+        calibration: rectifyBackup!.calibration,
+        lensK: rectifyBackup!.lensK,
+        rectifyUndo: false,
+        imgVersion: s.imgVersion + 1,
+        past: [],
+        future: [],
+        banner: null,
+      }));
+      rectifyBackup = null;
+      persist();
+    },
+
+    cancelRectify: () => set({ rectify: null }),
+
+    // ─────────────────────────── UI ───────────────────────────
+    setPanelTab: (t) => set({ panelTab: t, panelOpen: true }),
+    setPanelOpen: (v) => set({ panelOpen: v }),
+    setScaleBar: (v) => {
+      set({ scaleBar: v });
+      persist();
+    },
+    setSnap: (v) => {
+      set({ snap: v });
+      persist();
+    },
+    setNoteEditing: (id) => set({ noteEditingId: id }),
+    fireViewCmd: (cmd) => set((s) => ({ viewCmd: { seq: s.viewCmd.seq + 1, cmd } })),
+    setBanner: (b) => set({ banner: b }),
+    setExportBusy: (v) => set({ exportBusy: v }),
+  };
+});
+
+/** Wird nach Filterwechsel neu aufgebaut (verarbeitetes Bild + Capture). */
+export function currentFiltersAreDefault(f: Filters): boolean {
+  return !filtersActive(f);
+}

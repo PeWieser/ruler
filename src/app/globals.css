@@ -1,0 +1,242 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --animate-banner-in: banner-in 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-pop-in: pop-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-snap-ping: snap-ping 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes banner-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -10px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes snap-ping {
+    from {
+      opacity: 0.55;
+      transform: scale(0.4);
+    }
+    to {
+      opacity: 0;
+      transform: scale(1.6);
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* ── Farb-Tokens: passen sich automatisch an das Betriebssystem-/
+     Browser-Farbschema an (light-dark(Hell, Dunkel)). Die Bildbühne selbst
+     bleibt bewusst immer dunkel – wie bei professioneller Bild- und
+     Messsoftware üblich (Photoshop, Lightroom, ImageJ …) – nur die
+     Werkzeug-Chrome (Kopf-/Seitenleiste, Statuszeile) wechselt mit. ───── */
+  --mw-canvas: #0b0b0e;
+
+  --mw-surface-0: light-dark(#ffffff, #121216); /* Werkzeugleiste */
+  --mw-surface-1: light-dark(#f6f6f7, #131317); /* Kopf-/Statuszeile */
+  --mw-surface-2: light-dark(#fafafb, #151519); /* Seitenpanel */
+  --mw-surface-3: light-dark(#ffffff, #1a1a20); /* Karten, Eingabefelder */
+  --mw-surface-4: light-dark(#ffffff, #1e1e25); /* Menüs, Tooltips, Toasts */
+  --mw-surface-sunken: light-dark(#eef0f3, #101014); /* vertiefte Eingaben */
+
+  --mw-border: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.07));
+  --mw-border-strong: light-dark(rgba(0, 0, 0, 0.16), rgba(255, 255, 255, 0.14));
+  --mw-hover: light-dark(rgba(0, 0, 0, 0.045), rgba(255, 255, 255, 0.06));
+  --mw-hover-strong: light-dark(rgba(0, 0, 0, 0.07), rgba(255, 255, 255, 0.1));
+
+  --mw-text: light-dark(#1c1c1e, #f4f4f5);
+  --mw-text-dim: light-dark(rgba(0, 0, 0, 0.62), rgba(255, 255, 255, 0.55));
+  --mw-text-faint: light-dark(rgba(0, 0, 0, 0.42), rgba(255, 255, 255, 0.4));
+  --mw-text-ghost: light-dark(rgba(0, 0, 0, 0.28), rgba(255, 255, 255, 0.3));
+
+  --mw-accent: #3b6ded;
+  --mw-accent-strong: light-dark(#2f5bd0, #4578f0);
+  --mw-accent-bg: light-dark(rgba(59, 109, 237, 0.1), rgba(96, 165, 250, 0.1));
+  --mw-accent-bg-strong: light-dark(rgba(59, 109, 237, 0.18), #2b3648);
+  --mw-accent-text: light-dark(#2851c4, #8ab4ff);
+  --mw-accent-border: light-dark(rgba(59, 109, 237, 0.4), rgba(96, 165, 250, 0.4));
+
+  --mw-danger-bg: light-dark(rgba(217, 48, 37, 0.1), rgba(255, 69, 58, 0.13));
+  --mw-danger-text: light-dark(#c5301f, #ff6b61);
+
+  --mw-warn-bg: light-dark(rgba(191, 111, 8, 0.12), rgba(255, 159, 10, 0.12));
+  --mw-warn-text: light-dark(#9a5b06, #ffb84c);
+
+  --mw-shadow: light-dark(rgba(20, 20, 30, 0.14), rgba(0, 0, 0, 0.5));
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--mw-surface-1);
+  color: var(--mw-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+/* ── Zahlen in Tabellen/Werten ─────────────────────────────────────────── */
+.font-tabular {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+/* ── Tastenkürzel-Badges (Tooltips & Buttons) ──────────────────────────── */
+.mw-kbd {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--mw-hover-strong);
+  border: 1px solid var(--mw-border-strong);
+  color: var(--mw-text-dim);
+}
+
+/* ── Tooltip-Animation ─────────────────────────────────────────────────── */
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Zeilen sanft entfernen (Messwertliste) ──────────────────────────────── */
+@keyframes row-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    max-height: 40px;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+}
+.mw-row-leaving {
+  animation: row-out 0.24s cubic-bezier(0.4, 0, 1, 1) forwards;
+  overflow: hidden;
+}
+
+/* ── Scrollbars ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--mw-border-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--mw-text-ghost);
+  background-clip: padding-box;
+}
+
+/* ── Range-Slider ──────────────────────────────────────────────────────── */
+.mw-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+.mw-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--mw-border-strong);
+}
+.mw-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--mw-accent);
+  border: 2px solid light-dark(#ffffff, #f4f4f5);
+  box-shadow: 0 1px 4px var(--mw-shadow);
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mw-range::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+}
+.mw-range::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+}
+.mw-range::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--mw-border-strong);
+}
+.mw-range::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--mw-accent);
+  border: 2px solid light-dark(#ffffff, #f4f4f5);
+  box-shadow: 0 1px 4px var(--mw-shadow);
+}
+
+/* ── Checkboxen & Fokus ────────────────────────────────────────────────── */
+.mw-check {
+  accent-color: var(--mw-accent);
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.7);
+  outline-offset: 1px;
+  border-radius: 6px;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+select option {
+  background: var(--mw-surface-3);
+  color: var(--mw-text);
+}
