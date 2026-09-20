@@ -156,6 +156,39 @@ muss schön genug sein, dass man es freiwillig ansieht
 - Banner werden per `role="status"` höflich angekündigt (erster Baustein
   der Barrierefreiheits-Vertiefung, Rest siehe P6).
 
+### 1.11 GPU-Bildpipeline (P2)
+
+**Befund:** Filter und Objektivkorrektur liefen CPU-seitig über
+`getImageData`-Schleifen; zusätzlich baute jeder Pipeline-Tick ein
+Analyse-Capture (GPU→CPU-Readback, 1800 px) auf – auch wenn keine Analyse
+lief. Geraderichten *mit* aktiven Filtern fühlte sich dadurch getrieben an
+(130 ms Entprellen + sichtbare Stufen).
+
+**Maßnahme:** `src/lib/measure/glpipe.ts` – ein persistenter WebGL-Kontext,
+zwei Pässe, null Readback-Schleifen pro Tick:
+
+- **Pass A (Geometrie):** 90°-Schritte + Feinrotation + radiale
+  Objektivkorrektur, invers abgebildet im Fragment-Shader (Newton für
+  Brown-Conrady Ordnung 2, dieselbe Formel wie `radialDistort`), Rendern in
+  eine FBO-Textur – kein Readback.
+- **Kopie:** FBO → Framebuffer → 2D-Canvas. Diese Kopie ist `lensCorrected`
+  und bleibt **ungefiltert**, weil Export und Kantenfang davon lesen und
+  keine Filter sehen dürfen.
+- **Pass B (Filter):** 4er-Laplacian-Schärfe + Helligkeit/Kontrast/Gamma/
+  Graustufen – Formeln identisch zur CPU-LUT, ohne 8-Bit-Zwischenrundung.
+- **Quelltextur:** ein Upload pro Bildwechsel, nicht pro Tick.
+- **Capture-Laziness:** `refreshCapture` baut den Analyse-Puffer nur bei
+  aktiver Analyse; sonst wird er freigegeben und beim Aktivieren nachgezogen
+  (Effekt hängt an `captureTick`). Der Readback ist der teuerste Schritt
+  eines Ticks – jetzt kostet er nichts, solange niemand analysiert.
+- **Rückfall:** jeder Fehlschlag (kein WebGL, Shader-Fehler, Kontextverlust)
+  liefert `null`; die CPU-Kette in CanvasStage bleibt unverändert erhalten,
+  das 130-ms-Entprellen gilt nur noch ohne GPU.
+
+**Warum ein Kontext statt WebGPU:** WebGL 1 läuft überall, wo MaßWerk läuft
+(auch auf älteren Tablets und in eingebetteten Browsern); die Pipeline ist
+zwei Draw-Calls groß – WebGPU brächte hier nichts außer Risiko.
+
 ### 1.10 Kritikrunde: Modus-Fallen, transparente Ausrichtung, greifbare Objekte
 
 Aus einer konkreten Nutzer-Kritikliste entstanden; jede Zeile nennt Befund →
@@ -209,10 +242,9 @@ Maßnahme. Die daraus abgeleiteten **dauerhaften Regeln** stehen in
 
 ## 3 · Rückstand (Phase 3) – priorisiert
 
-**P2 · GPU-Bildpipeline.** Filter + Objektivkorrektur laufen heute CPU-seitig
-über `getImageData`; beim Geraderichten *mit* aktiven Filtern entsteht eine
-spürbare Latenz. Ein einziger WebGL-Pass (Rotation + Radial + LUT) macht alle
-Regler latenzfrei – Architektur dafür (Shader, Registry) ist vorbereitet.
+**P2 · GPU-Bildpipeline – ERLEDIGT** (siehe 1.11). Regler mit Filtern und/oder
+Objektivkorrektur laufen jetzt latenzfrei über einen einzigen WebGL-Kontext;
+die CPU-Kette bleibt ehrlicher Rückfall für Systeme ohne WebGL.
 
 **P3 · Dokument-Modell.** „Dokument öffnen/speichern" (.masswerk-Datei) statt
 nur LocalStorage-Sitzung; mehrere Bilder in Tabs. Ausrichtung/Entzerrung sind

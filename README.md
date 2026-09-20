@@ -60,8 +60,12 @@ straightening and object counting.
 
 Next.js (App Router) · React · TypeScript · Zustand · Canvas 2D & WebGL ·
 Tailwind CSS. Image pipeline: orientation → lens correction → filters →
-analysis capture; all geometry lives in image coordinates and is transformed
-exactly whenever the image is. Fonts (Geist / Geist Mono) are self-hosted.
+analysis capture. Orientation, radial lens correction and filters run in a
+single persistent WebGL context (two draw calls, one texture upload per
+image); a CPU chain remains as honest fallback where WebGL is unavailable.
+The analysis readback buffer is built lazily, only while analysis is active.
+All geometry lives in image coordinates and is transformed exactly whenever
+the image is. Fonts (Geist / Geist Mono) are self-hosted.
 
 - `src/lib/measure/` – geometry, image processing, rendering, export, store
 - `src/components/editor/` – stage, bars, panel, tooltips, shortcut overlay

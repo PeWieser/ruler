@@ -17,6 +17,7 @@ import {
   rectFrom2,
 } from "@/lib/measure/geometry";
 import { findEdgeLocal, postProcess, radialDistort } from "@/lib/measure/imagefx";
+import { glAvailable, glRenderPipeline } from "@/lib/measure/glpipe";
 import { orientationActive, renderOriented, renderOrientedFull } from "@/lib/measure/orientation";
 import { boxBlur, morphClose, otsuThreshold } from "@/lib/measure/geometry";
 import { drawChip, drawMeasurement, type RenderEnv } from "@/lib/measure/render";
@@ -436,6 +437,37 @@ export default function CanvasStage() {
     fitImage();
   }, [st.imgVersion, fitImage]);
 
+  // ── Analyse-Capture: Readback erst bauen, wenn die Analyse wirklich läuft ─
+  const buildCapture = useCallback((source: CanvasImageSource, W: number, H: number) => {
+    const capLong = 1800;
+    const cs = Math.min(1, capLong / Math.max(W, H));
+    const cw = Math.max(1, Math.round(W * cs));
+    const ch = Math.max(1, Math.round(H * cs));
+    const c = document.createElement("canvas");
+    c.width = cw;
+    c.height = ch;
+    const cx = c.getContext("2d", { willReadFrequently: true });
+    if (!cx) return;
+    cx.drawImage(source, 0, 0, cw, ch);
+    imgReg.capture = cx.getImageData(0, 0, cw, ch);
+    imgReg.captureScale = cs;
+  }, []);
+
+  const refreshCapture = useCallback(
+    (source: CanvasImageSource, W: number, H: number) => {
+      if (useEditor.getState().analysis.active) {
+        buildCapture(source, W, H);
+        setCaptureTick((n) => n + 1);
+      } else if (imgReg.capture) {
+        // Analyse aus: teuren Puffer freigeben statt ihn mitzuschleifen
+        imgReg.capture = null;
+        imgReg.captureScale = 1;
+      }
+      scheduleDraw();
+    },
+    [buildCapture, scheduleDraw],
+  );
+
   // ── Bildpipeline: Ausrichtung → Linskorrektur → Filter → Capture ────────
   useEffect(() => {
     const src = imgReg.original;
@@ -460,24 +492,53 @@ export default function CanvasStage() {
     // Filter → Capture. (Getrennte Effekte würden hier zu Wettlaufzuständen
     // führen: der Capture-Aufbau lief teils, bevor eine asynchrone Stufe
     // fertig war, wodurch diese visuell wirkungslos blieb.)
-    const buildCapture = (source: CanvasImageSource, W: number, H: number) => {
-      const capLong = 1800;
-      const cs = Math.min(1, capLong / Math.max(W, H));
-      const cw = Math.max(1, Math.round(W * cs));
-      const ch = Math.max(1, Math.round(H * cs));
-      const c = document.createElement("canvas");
-      c.width = cw;
-      c.height = ch;
-      const cx = c.getContext("2d", { willReadFrequently: true });
-      if (!cx) return;
-      cx.drawImage(source, 0, 0, cw, ch);
-      imgReg.capture = cx.getImageData(0, 0, cw, ch);
-      imgReg.captureScale = cs;
-    };
-
     const run = async () => {
       const W = img.width;
       const H = img.height;
+
+      // 0) GPU-Vorzugsweg: EIN WebGL-Kontext für Rotation, radiale
+      //    Objektivkorrektur und Filter – ohne getImageData-Schleifen,
+      //    ohne Entprellen. lensCorrected bleibt ungefiltert (Export &
+      //    Kantenfang lesen davon); die CPU-Kette darunter ist der
+      //    ehrliche Rückfall, falls WebGL fehlt oder scheitert.
+      const o0 = st.orientation;
+      const glRes =
+        orientationActive(o0) ||
+        Math.abs(st.lensK) >= 1e-5 ||
+        filtersActive(st.filters)
+          ? glRenderPipeline(
+              src,
+              o0.quarter % 2 === 1 ? H : W,
+              o0.quarter % 2 === 1 ? W : H,
+              W,
+              H,
+              o0,
+              st.lensK,
+              st.filters,
+            )
+          : null;
+      if (glRes) {
+        if (!alive || token !== rebuildToken.current) return;
+        const oldP = imgReg.processed;
+        if (
+          oldP && oldP !== glRes.processed &&
+          oldP instanceof ImageBitmap && typeof oldP.close === "function"
+        ) {
+          oldP.close();
+        }
+        const oldL = imgReg.lensCorrected;
+        if (
+          oldL && oldL !== glRes.lens &&
+          oldL instanceof ImageBitmap && typeof oldL.close === "function"
+        ) {
+          oldL.close();
+        }
+        imgReg.lensCorrected = glRes.lens;
+        imgReg.lensK = st.lensK;
+        imgReg.processed = glRes.processed;
+        refreshCapture(glRes.processed, W, H);
+        return;
+      }
 
       // 1) Ausrichtung (90°-Schritte + Geraderichten mit Crop-Zoom).
       //    W/H sind die sichtbaren Maße – die Rohmaße ergeben sich aus der
@@ -506,9 +567,7 @@ export default function CanvasStage() {
       // 3) Bildoptimierung (Helligkeit/Kontrast/Gamma/Schärfe) + Capture
       if (!filtersActive(st.filters)) {
         imgReg.processed = base;
-        buildCapture(base, W, H);
-        setCaptureTick((n) => n + 1);
-        scheduleDraw();
+        refreshCapture(base, W, H);
         return;
       }
       const sc = Math.min(1, 3200 / Math.max(W, H));
@@ -529,12 +588,13 @@ export default function CanvasStage() {
         old.close();
       }
       imgReg.processed = bmp2;
-      buildCapture(bmp2, W, H);
-      setCaptureTick((n) => n + 1);
-      scheduleDraw();
+      refreshCapture(bmp2, W, H);
     };
 
-    const busy = filtersActive(st.filters) || Math.abs(st.lensK) >= 1e-5;
+    // Entprellen nur, wenn die CPU-Kette läuft: mit GPU ist jeder Tick
+    // ein synchroner Shader-Durchlauf – der Regler fühlt sich direkt an.
+    const busy =
+      (filtersActive(st.filters) || Math.abs(st.lensK) >= 1e-5) && !glAvailable();
     if (busy) {
       // Teure CPU-Stufen aktiv: leicht entprellen, damit Regler flüssig bleiben
       const to = setTimeout(run, 130);
@@ -550,7 +610,7 @@ export default function CanvasStage() {
     return () => {
       alive = false;
     };
-  }, [st.imgVersion, st.filters, st.lensK, st.orientation, st.image, scheduleDraw]);
+  }, [st.imgVersion, st.filters, st.lensK, st.orientation, st.image, scheduleDraw, refreshCapture]);
 
   // ── Schwellenwert-Analyse berechnen ──────────────────────────────────────
   // Wichtig: Die Abhängigkeiten sind bewusst auf einzelne, primitive Werte
@@ -561,6 +621,16 @@ export default function CanvasStage() {
   // ("es passiert dauernd etwas", ohne dass sich am Bild etwas ändert).
   const a = st.analysis;
   const roiKey = a.roi ? `${a.roi.x}|${a.roi.y}|${a.roi.w}|${a.roi.h}` : "";
+
+  // Capture nachziehen, sobald die Analyse aktiv wird und noch kein Puffer
+  // existiert (Readback wird sonst pro Regler-Tick bezahlt, obwohl ihn
+  // niemand braucht – siehe refreshCapture).
+  useEffect(() => {
+    if (!st.analysis.active || !st.analysis.roi) return;
+    if (imgReg.capture || !imgReg.processed || !st.image) return;
+    buildCapture(imgReg.processed, st.image.width, st.image.height);
+    setCaptureTick((n) => n + 1);
+  }, [st.analysis.active, roiKey, st.imgVersion, captureTick, buildCapture]);
   useEffect(() => {
     const s = useEditor.getState();
     const a = s.analysis;
