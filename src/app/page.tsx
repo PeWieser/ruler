@@ -36,12 +36,14 @@ export default function Page() {
   const openSample = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/samples/beispiel.png");
+      const res = await fetch("/samples/beispiel.jpg");
       const blob = await res.blob();
-      const file = new File([blob], "beispiel.png", { type: "image/png" });
+      const file = new File([blob], "werkbank.jpg", { type: "image/jpeg" });
       const img = await loadImageFile(file);
       useEditor.getState().setLoaded(img);
-      useEditor.getState().setBanner("Beispiel geladen – am Lineal unten kalibrieren.");
+      useEditor.getState().setBanner(
+        "Beispiel geladen – Maßstab am Stahl-Lineal kalibrieren, z. B. 0–10 cm.",
+      );
     } catch {
       useEditor.getState().setBanner("Beispielbild konnte nicht geladen werden.");
     } finally {

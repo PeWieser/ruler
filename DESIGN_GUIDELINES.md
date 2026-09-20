@@ -185,6 +185,11 @@ die Abschnitte 1–5:
 8. **Beispielinhalte halten dem eigenen Maßstab stand.** *(Befund:
    synthetisches Beispielbild wirkte lieblos – „AI slop".)* Das Beispielbild
    muss schön genug sein, dass man es vermisst, wenn es fehlt.
+   *Nachtrag:* Seit dieser Runde ist es eine kuratierte Fotografie-Szene
+   (`public/samples/beispiel.jpg`) – Werkbank, diagonales Stahl-Lineal,
+   Messschieber, Aluminium-Blöcke –, aus zwei Kandidaten durch die
+   Produktperson gewählt. Das Lineal dient als Kalibrier-Referenz, die
+   Kanten als Ziel für „Automatisch begradigen".
 
 ---
 

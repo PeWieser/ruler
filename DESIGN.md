@@ -105,12 +105,12 @@ Privacy-Satz, Sample-Link – und ein Sample, das es nie gab
 
 **Jetzt:** App-Icon-Kachel im macOS-Stil mit sanftem Glow, ein Titel, ein Satz,
 eine primäre Aktion, eine Zeile Hinweis, ein Sample-Link, ein Trust-Satz.
-Das Sample existiert und ist messtechnisch ehrlich:
-`public/samples/beispiel.png`, prozedural erzeugt
-(`scripts/generate-sample.mjs`), Lineal exakt 10 px/mm (0–160 mm),
-Unterlegscheiben Ø 22/15/10 mm, exakter 45°-Winkel, Lochplatte, Zählpunkte.
-Kalibrieren am Lineal liefert echte, prüfbare Werte – kein AI-Rauschen,
-keine gelogenen Skalen.
+Das Sample ist eine echte Fotografie-Szene (`public/samples/beispiel.jpg`):
+Werkbank mit diagonalem Stahl-Lineal, Messschieber, Aluminium-Blöcken –
+natürliche Ziele für Kalibrierung (Lineal), Auto-Begradigen (Kanten) und
+Zähl-Analyse (Schrauben). Ehrlich statt synthetisch-exakt: ein Beispielbild
+muss schön genug sein, dass man es freiwillig ansieht
+(`DESIGN_GUIDELINES.md` §4.6, §6.8).
 
 ### 1.5 TopBar
 
