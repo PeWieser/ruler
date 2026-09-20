@@ -54,6 +54,7 @@ export default function TopBar({
   const st = useEditor();
   const scale = useView((s) => s.scale);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scaleOpen, setScaleOpen] = useState(false);
   const [pngBusy, setPngBusy] = useState(0); // 0 = frei, >0 Fortschritt
   const [pngDone, setPngDone] = useState(false);
   const [calibPulse, setCalibPulse] = useState(false);
@@ -65,11 +66,14 @@ export default function TopBar({
   const canRedo = st.future.length > 0;
 
   useEffect(() => {
-    if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
+    if (!menuOpen && !scaleOpen) return;
+    const close = () => {
+      setMenuOpen(false);
+      setScaleOpen(false);
+    };
     window.addEventListener("pointerdown", close);
     return () => window.removeEventListener("pointerdown", close);
-  }, [menuOpen]);
+  }, [menuOpen, scaleOpen]);
 
   // Kurzer, einmaliger Glanz-Impuls am Maßstab-Badge, sobald kalibriert wird
   useEffect(() => {
@@ -118,6 +122,45 @@ export default function TopBar({
     return `${fmtNumber(c.pixelsPerUnit)} px/${c.unit}`;
   })();
 
+  // Ohne Bild tritt die Chrome zurück: keine toten Schalter, keine leeren
+  // Badges – nur Marke, Hilfe und eine klare Einladung.
+  if (!hasImage) {
+    return (
+      <header className="flex h-12 items-center gap-2 border-b border-[var(--mw-border)] bg-[var(--mw-surface-1)] px-3">
+        <Wordmark />
+        <span className="flex-1" />
+        <button
+          type="button"
+          className={iconBtn}
+          data-tip="Tastaturkürzel"
+          data-key="?"
+          onClick={() => st.setHelpOpen(true)}
+        >
+          <CircleHelp size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="flex h-8 items-center gap-2 rounded-lg bg-[var(--mw-accent)] px-3.5 text-[12.5px] font-medium text-white transition-all duration-150 hover:bg-[var(--mw-accent-strong)] active:scale-[0.98]"
+        >
+          <FolderOpen size={15} />
+          Bild öffnen
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,.tif,.tiff"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onOpenImage(f);
+            e.target.value = "";
+          }}
+        />
+      </header>
+    );
+  }
+
   return (
     <header className="flex h-12 items-center gap-2 border-b border-[var(--mw-border)] bg-[var(--mw-surface-1)] px-3">
       <Wordmark />
@@ -151,15 +194,17 @@ export default function TopBar({
         />
       </div>
 
-      {/* Maßstab-Badge */}
-      <div className="mx-auto flex items-center">
+      {/* Maßstab-Badge – jeder Klick bekommt eine sichtbare Antwort */}
+      <div
+        className="relative mx-auto flex items-center"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         {hasImage && (
           <button
             type="button"
-            onClick={() => {
-              if (!st.calibration) st.setTool("calibrate");
-              else st.setPanelTab("kalib");
-            }}
+            aria-expanded={scaleOpen}
+            aria-haspopup="dialog"
+            onClick={() => setScaleOpen((v) => !v)}
             className={`relative flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors duration-150 active:scale-[0.97] ${
               st.calibration
                 ? "border-[var(--mw-border-strong)] bg-[var(--mw-hover)] text-[var(--mw-text-dim)] hover:bg-[var(--mw-hover-strong)]"
@@ -168,7 +213,7 @@ export default function TopBar({
             data-tip={st.calibration ? "Maßstab" : "Maßstab setzen"}
             data-desc={
               st.calibration
-                ? "Im Panel anpassen"
+                ? "Kalibrierung ansehen und anpassen"
                 : "Referenzstrecke ziehen, Länge eingeben"
             }
             data-key={st.calibration ? "" : "K"}
@@ -186,6 +231,86 @@ export default function TopBar({
               <span className="relative">Maßstab setzen</span>
             )}
           </button>
+        )}
+        {hasImage && scaleOpen && (
+          <div
+            className="animate-pop-in absolute left-1/2 top-10 z-30 w-72 -translate-x-1/2 origin-top rounded-xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] p-3.5"
+            style={{ boxShadow: "0 16px 40px var(--mw-shadow)" }}
+            role="dialog"
+            aria-label="Maßstab"
+          >
+            {!st.calibration ? (
+              <>
+                <div className="text-[13px] font-medium text-[var(--mw-text)]">
+                  Noch kein Maßstab
+                </div>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--mw-text-faint)]">
+                  Messwerte sind gerade in Pixeln. Ziehen Sie eine Referenzstrecke
+                  entlang einer bekannten Länge und tragen Sie ihren realen Wert
+                  ein – danach misst alles in der gewählten Einheit.
+                </p>
+                <div className="mt-2.5 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScaleOpen(false);
+                      st.setTool("calibrate");
+                    }}
+                    className="rounded-lg bg-[var(--mw-accent)] px-2.5 py-1.5 text-[11.5px] font-medium text-white transition-colors hover:bg-[var(--mw-accent-strong)]"
+                  >
+                    Jetzt kalibrieren
+                  </button>
+                  <span className="ml-auto font-tabular text-[10.5px] text-[var(--mw-text-ghost)]">
+                    Taste K
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--mw-text-ghost)]">
+                  Maßstab
+                </div>
+                <div className="mt-0.5 font-tabular text-[17px] font-medium text-[var(--mw-text)]">
+                  {fmtNumber(st.calibration.pixelsPerUnit)}
+                  <span className="ml-1.5 text-[12px] font-normal text-[var(--mw-text-dim)]">
+                    px / {st.calibration.unit}
+                  </span>
+                </div>
+                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScaleOpen(false);
+                      st.setTool("calibrate");
+                    }}
+                    className="rounded-lg border border-[var(--mw-border-strong)] bg-[var(--mw-surface-3)] px-2.5 py-1.5 text-[11.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
+                  >
+                    Neu kalibrieren
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScaleOpen(false);
+                      st.setPanelTab("kalib");
+                    }}
+                    className="rounded-lg border border-[var(--mw-border-strong)] bg-[var(--mw-surface-3)] px-2.5 py-1.5 text-[11.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
+                  >
+                    Im Panel anpassen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScaleOpen(false);
+                      st.clearCalibration();
+                    }}
+                    className="ml-auto rounded-lg px-2 py-1.5 text-[11.5px] text-[var(--mw-text-ghost)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text-dim)]"
+                  >
+                    Entfernen
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 

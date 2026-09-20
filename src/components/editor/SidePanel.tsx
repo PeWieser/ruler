@@ -9,6 +9,7 @@ import {
   Plus,
   RotateCcw,
   RotateCw,
+  ScanLine,
   ScanSearch,
   Trash2,
 } from "lucide-react";
@@ -49,6 +50,7 @@ function Slider({
   format,
   onReset,
   tip,
+  onHoldChange,
 }: {
   label: string;
   min: number;
@@ -61,6 +63,8 @@ function Slider({
   onReset?: () => void;
   /** Erklärt den Regler als Tooltip statt als Textwüste im Panel. */
   tip?: string;
+  /** Zeigt an, wenn der Regler angefasst/losgelassen wird (Halte-Zustand). */
+  onHoldChange?: (holding: boolean) => void;
 }) {
   return (
     <label className="mb-3 block" data-tip={tip} data-side="left">
@@ -76,6 +80,10 @@ function Slider({
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
         onDoubleClick={onReset}
+        onPointerDown={() => onHoldChange?.(true)}
+        onPointerUp={() => onHoldChange?.(false)}
+        onPointerCancel={() => onHoldChange?.(false)}
+        onBlur={() => onHoldChange?.(false)}
         className="mw-range w-full"
       />
     </label>
@@ -541,6 +549,24 @@ function BildTab() {
           >
             <RotateCw size={15} strokeWidth={1.7} />
           </button>
+          <button
+            type="button"
+            className={
+              st.horizon !== null
+                ? "flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--mw-hover)] text-[var(--mw-accent-text)] transition-colors duration-150 active:scale-95 disabled:opacity-30"
+                : orientBtn
+            }
+            data-tip="Automatisch begradigen"
+            data-desc="Linie entlang einer geraden Kante ziehen"
+            data-side="left"
+            disabled={!st.image}
+            aria-pressed={st.horizon !== null}
+            onClick={() =>
+              st.horizon !== null ? st.cancelHorizon() : st.enterHorizon()
+            }
+          >
+            <ScanLine size={15} strokeWidth={1.7} />
+          </button>
           <span className="flex-1" />
           {oriented && (
             <button
@@ -561,7 +587,8 @@ function BildTab() {
             value={o.fine}
             onChange={(v) => st.setOrientation({ fine: v })}
             onReset={() => st.setOrientation({ fine: 0 })}
-            tip="Feinrotation wie in Apple Fotos · Doppelklick setzt auf 0° zurück"
+            onHoldChange={st.setStraightenHold}
+            tip="Feinrotation wie in Apple Fotos · Raster als Horizont-Hilfe · Doppelklick setzt auf 0° zurück"
             format={(v) => (Math.abs(v) < 0.05 ? "0°" : `${fmtNumber(v, 1)}°`)}
           />
         </div>

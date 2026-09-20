@@ -102,6 +102,25 @@ export function orientPointInv(p: Pt, w0: number, h0: number, o: Orientation): P
 }
 
 /**
+ * Zielwinkel für „Automatisch begradigen": Die gezogene Linie soll horizontal
+ * (oder, wenn sie steiler liegt, vertikal) werden. Liefert den neuen
+ * Feinwinkel in Grad (−45…+45), ausgehend vom aktuellen.
+ */
+export function straightenDelta(currentFine: number, a: Pt, b: Pt): number {
+  let deg = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+  // auf (−90, 90] normalisieren
+  deg = ((((deg + 90) % 180) + 180) % 180) - 90;
+  // Linie interpretieren: flacher → Horizontale, steiler → Vertikale
+  const primary = Math.abs(deg) > 45 ? Math.sign(deg) * 90 : 0;
+  const candidates = [primary, ...[0, 90, -90].filter((t) => t !== primary)];
+  for (const t of candidates) {
+    const next = currentFine + (t - deg);
+    if (next >= -FINE_MAX && next <= FINE_MAX) return Math.round(next * 10) / 10;
+  }
+  return Math.round(clampFine(currentFine + (primary - deg)) * 10) / 10;
+}
+
+/**
  * Rendert das ausgerichtete Bild in ein neues Canvas (GPU-beschleunigt über
  * drawImage – schnell genug für den Live-Regler). Gibt null zurück, wenn die
  * Ausrichtung identisch ist oder kein Kontext verfügbar ist.
@@ -128,6 +147,38 @@ export function renderOriented(
     ctx.rotate(o.fine * DEG);
     ctx.scale(s, s);
   }
+  if (q !== 0) ctx.rotate(q * Math.PI / 2);
+  ctx.drawImage(source, -w0 / 2, -h0 / 2, w0, h0);
+  return out;
+}
+
+/**
+ * Wie renderOriented, aber OHNE Crop-Zoom: das vollständig gedrehte Bild auf
+ * seinerBounding-Box. Dient beim Geraderichten als Hintergrund unter dem
+ * Zuschnittrahmen – der Nutzer sieht, dass nichts „verloren" geht, sondern
+ * nur außerhalb des Rahmens liegt (wie in Apple Fotos' Zuschneidemodus).
+ */
+export function renderOrientedFull(
+  source: CanvasImageSource,
+  w0: number,
+  h0: number,
+  o: Orientation,
+): HTMLCanvasElement | null {
+  if (Math.abs(o.fine) < 1e-9) return null;
+  const q = normQuarter(o.quarter);
+  const { w: w1, h: h1 } = orientedSize(w0, h0, q);
+  const t = Math.abs(o.fine) * DEG;
+  const wu = Math.ceil(w1 * Math.cos(t) + h1 * Math.sin(t));
+  const hu = Math.ceil(w1 * Math.sin(t) + h1 * Math.cos(t));
+  const out = document.createElement("canvas");
+  out.width = Math.max(1, wu);
+  out.height = Math.max(1, hu);
+  const ctx = out.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.translate(wu / 2, hu / 2);
+  ctx.rotate(o.fine * DEG);
   if (q !== 0) ctx.rotate(q * Math.PI / 2);
   ctx.drawImage(source, -w0 / 2, -h0 / 2, w0, h0);
   return out;

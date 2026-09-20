@@ -36,6 +36,7 @@ import {
   orientPointInv,
   orientedSize,
   sameOrientation,
+  straightenDelta,
   type Orientation,
 } from "./orientation";
 import { toStorageDataUrl, type LoadedImage } from "./loadImage";
@@ -52,6 +53,8 @@ export interface ImageRegistry {
   captureScale: number;
   /** Aktive Linskorrektur (wird von Stage beim Aufbau gesetzt) */
   lensK: number;
+  /** Unbeschnittene gedrehte Ansicht (Geraderichten-Hintergrund), null ohne Feinwinkel */
+  orientFull: HTMLCanvasElement | null;
 }
 
 export const imgReg: ImageRegistry = {
@@ -61,6 +64,7 @@ export const imgReg: ImageRegistry = {
   capture: null,
   captureScale: 1,
   lensK: 0,
+  orientFull: null,
 };
 
 export interface AnalysisMask {
@@ -160,6 +164,12 @@ interface EditorState {
   analysisResult: AnalysisResult | null;
   rectify: { active: boolean; points: Pt[] } | null;
   rectifyUndo: boolean;
+  /** Entwurf der Automatischen Begradigung (Linie entlang Horizont/Kante). */
+  horizon: Pt[] | null;
+  /** Geraderichten-Regler wird gerade bedient (Gitter sichtbar). */
+  straightenHold: boolean;
+  /** Gitter leuchtet nach der letzten Änderung kurz nach (Epoch-ms). */
+  straightenGlowUntil: number;
   noteEditingId: string | null;
   activeCountId: string | null;
   helpOpen: boolean;
@@ -216,6 +226,10 @@ interface EditorState {
   exitAnalysis: () => void;
   enterRectify: () => void;
   addRectifyPoint: (p: Pt) => void;
+  enterHorizon: () => void;
+  addHorizonPoint: (p: Pt) => void;
+  cancelHorizon: () => void;
+  setStraightenHold: (v: boolean) => void;
   applyRectify: () => void;
   undoRectify: () => void;
   cancelRectify: () => void;
@@ -404,6 +418,9 @@ export const useEditor = create<EditorState>()((set, get) => {
     analysisResult: null,
     rectify: null,
     rectifyUndo: false,
+    horizon: null,
+    straightenHold: false,
+    straightenGlowUntil: 0,
     noteEditingId: null,
     activeCountId: null,
     helpOpen: false,
@@ -481,15 +498,31 @@ export const useEditor = create<EditorState>()((set, get) => {
 
     // ─────────────────────────── Werkzeuge ───────────────────────────
     setTool: (t) =>
-      set((s) => ({
-        tool: t,
-        draft: null,
-        noteEditingId: null,
-        pendingCalib: t === "calibrate" ? s.pendingCalib : null,
-        activeCountId: t === "count" ? null : s.activeCountId,
-        panelOpen: t === "calibrate" ? true : s.panelOpen,
-        panelTab: t === "calibrate" ? "kalib" : s.panelTab,
-      })),
+      set((s) => {
+        // Modus-Falle vermeiden: Wer ein Werkzeug wählt, verlässt Analyse,
+        // Entzerrung und Horizont-Modus – sonst bleibt die Bühne in einem
+        // Zustand, den der Nutzer nicht mehr versteht (Zero Dead Ends).
+        const leavingAnalysis = s.analysis.active;
+        if (leavingAnalysis) {
+          analysisReg.bitmap = null;
+          analysisReg.count = 0;
+        }
+        return {
+          tool: t,
+          draft: null,
+          noteEditingId: null,
+          pendingCalib: t === "calibrate" ? s.pendingCalib : null,
+          activeCountId: t === "count" ? null : s.activeCountId,
+          panelOpen: t === "calibrate" ? true : s.panelOpen,
+          panelTab: t === "calibrate" ? "kalib" : s.panelTab,
+          analysis: leavingAnalysis
+            ? { ...s.analysis, active: false, roi: null }
+            : s.analysis,
+          analysisResult: leavingAnalysis ? null : s.analysisResult,
+          rectify: s.rectify ? null : s.rectify,
+          horizon: s.horizon ? null : s.horizon,
+        };
+      }),
 
     // ─────────────────────────── Verlauf ───────────────────────────
     pushHistory: () =>
@@ -823,9 +856,11 @@ export const useEditor = create<EditorState>()((set, get) => {
           : s.calibration;
 
       const quarterChanged = normQuarter(next.quarter) !== normQuarter(old.quarter);
+      const fineChanged = Math.abs(next.fine - old.fine) > 1e-9;
       const roiDropped = s.analysis.active && s.analysis.roi !== null;
       set({
         orientation: next,
+        straightenGlowUntil: fineChanged ? Date.now() + 1600 : s.straightenGlowUntil,
         measurements: s.measurements.map((m) => ({ ...m, points: remapAll(m.points) })),
         draft: s.draft ? remapAll(s.draft) : null,
         pendingCalib: s.pendingCalib
@@ -1019,6 +1054,38 @@ export const useEditor = create<EditorState>()((set, get) => {
     },
 
     cancelRectify: () => set({ rectify: null }),
+
+    enterHorizon: () =>
+      set((s) => ({
+        horizon: [],
+        draft: null,
+        analysis: s.analysis.active
+          ? { ...s.analysis, active: false, roi: null }
+          : s.analysis,
+        analysisResult: s.analysis.active ? null : s.analysisResult,
+      })),
+
+    addHorizonPoint: (p) => {
+      const s = get();
+      if (!s.horizon) return;
+      const pts = [...s.horizon, p].slice(0, 2);
+      if (pts.length < 2) {
+        set({ horizon: pts });
+        return;
+      }
+      const fine = straightenDelta(s.orientation.fine, pts[0], pts[1]);
+      set({ horizon: null });
+      s.pushHistory();
+      get().setOrientation({ fine });
+    },
+
+    cancelHorizon: () => set({ horizon: null }),
+
+    setStraightenHold: (v) =>
+      set((s) => ({
+        straightenHold: v,
+        straightenGlowUntil: v ? s.straightenGlowUntil : Date.now() + 900,
+      })),
 
     // ─────────────────────────── UI ───────────────────────────
     setPanelTab: (t) => set({ panelTab: t, panelOpen: true }),

@@ -17,7 +17,7 @@ import {
   rectFrom2,
 } from "@/lib/measure/geometry";
 import { findEdgeLocal, postProcess, radialDistort } from "@/lib/measure/imagefx";
-import { orientationActive, renderOriented } from "@/lib/measure/orientation";
+import { orientationActive, renderOriented, renderOrientedFull } from "@/lib/measure/orientation";
 import { boxBlur, morphClose, otsuThreshold } from "@/lib/measure/geometry";
 import { drawChip, drawMeasurement, type RenderEnv } from "@/lib/measure/render";
 import { loadFromDataUrl } from "@/lib/measure/loadImage";
@@ -314,9 +314,29 @@ export default function CanvasStage() {
                 pointInPolygon(p, pts) ||
                 pts.some((a, i) => distToSegment(p, a, pts[(i + 1) % pts.length]) < tol);
             break;
-          case "note":
-            body = dist(p, pts[0]) < tol * 1.8;
+          case "note": {
+            // Punkt großzügig treffen UND den Text-Chip als Grifffläche:
+            // Erstelltes muss greifbar bleiben (Zero Dead Ends).
+            const q = pts[0];
+            if (dist(p, q) < tol * 2.2) {
+              body = true;
+              break;
+            }
+            const ntext = m.text ?? "";
+            if (ntext) {
+              const f = 12.5 / tRef.current.scale;
+              const sw = 1.9 / tRef.current.scale;
+              const wch = ntext.length * f * 0.6 + f * 1.74;
+              const hch = f * 1.72;
+              const x0 = q.x + sw * 6;
+              const y0 = q.y - sw * 5 - hch / 2;
+              const pad = tol * 0.4;
+              body =
+                p.x > x0 - pad && p.x < x0 + wch + pad &&
+                p.y > y0 - pad && p.y < y0 + hch + pad;
+            }
             break;
+          }
           case "count":
             break;
         }
@@ -423,6 +443,18 @@ export default function CanvasStage() {
     if (!src || !img) return;
     const token = ++rebuildToken.current;
     let alive = true;
+
+    // Unterlage fürs Geraderichten: die UNBESCHNITTENE gedrehte Ansicht.
+    // Der Rahmen bleibt stehen, der Inhalt dreht sichtbar daraus hervor –
+    // die Operation wird erklärt statt heimlich beschnitten (Apple Fotos).
+    if (Math.abs(st.orientation.fine) > 1e-9) {
+      const o = st.orientation;
+      const rawW = o.quarter % 2 === 1 ? img.height : img.width;
+      const rawH = o.quarter % 2 === 1 ? img.width : img.height;
+      imgReg.orientFull = renderOrientedFull(src, rawW, rawH, o);
+    } else {
+      imgReg.orientFull = null;
+    }
 
     // Ein einziger sequenzieller Ablauf: Ausrichtung → Objektivkorrektur →
     // Filter → Capture. (Getrennte Effekte würden hier zu Wettlaufzuständen
@@ -683,10 +715,36 @@ export default function CanvasStage() {
     // den neuen Maßen zurückbleiben – dann lieber eine dunkle Bühne zeigen
     // als ein verzerrtes Bild.
     const srcReady = !!img && !!src && srcDimsMatch(src, img.width, img.height);
+    // Geraderichten sichtbar machen: Regler gehalten, Horizont-Modus aktiv
+    // oder kurzer Glow nach der letzten Änderung (mit 400 ms Ausklang).
+    const horizonActive = st.horizon !== null;
+    const straightenHoldOn = st.straightenHold || horizonActive;
+    const straightenOn =
+      !!img && !!imgReg.orientFull && Math.abs(st.orientation.fine) > 1e-9 &&
+      (straightenHoldOn || st.straightenGlowUntil > Date.now());
+    const glowT = straightenHoldOn
+      ? 1
+      : clamp((st.straightenGlowUntil - Date.now()) / 400, 0, 1);
+
     if (img && src && srcReady) {
       ictx.imageSmoothingEnabled = true;
       ictx.imageSmoothingQuality = "high";
       ictx.setTransform(dpr * t.scale, 0, 0, dpr * t.scale, dpr * t.x, dpr * t.y);
+      if (straightenOn && imgReg.orientFull) {
+        // Hintergrund: vollständig gedrehtes Bild, der sichtbare Rahmen
+        // liegt mittig darauf – nichts geht „verloren“, es liegt nur außen.
+        const wu = imgReg.orientFull.width;
+        const hu = imgReg.orientFull.height;
+        ictx.globalAlpha = 0.55 * glowT;
+        ictx.drawImage(
+          imgReg.orientFull,
+          -(wu - img.width) / 2,
+          -(hu - img.height) / 2,
+          wu,
+          hu,
+        );
+        ictx.globalAlpha = 1;
+      }
       ictx.drawImage(src, 0, 0, img.width, img.height);
     }
 
@@ -698,6 +756,68 @@ export default function CanvasStage() {
     octx.strokeStyle = "rgba(255,255,255,0.09)";
     octx.lineWidth = 1.2 / t.scale;
     octx.strokeRect(0, 0, img.width, img.height);
+
+    if (straightenOn) {
+      // Drittelraster + Mittellinien: Bildschirm-ausgerichtet, denn die
+      // Referenz ist der Zielrahmen – nicht der mitgedrehte Inhalt.
+      octx.save();
+      octx.globalAlpha = glowT;
+      octx.strokeStyle = "rgba(255,255,255,0.20)";
+      octx.lineWidth = 1 / t.scale;
+      octx.beginPath();
+      for (const f of [1 / 3, 2 / 3]) {
+        octx.moveTo(img.width * f, 0);
+        octx.lineTo(img.width * f, img.height);
+        octx.moveTo(0, img.height * f);
+        octx.lineTo(img.width, img.height * f);
+      }
+      octx.stroke();
+      octx.strokeStyle = "rgba(255,255,255,0.10)";
+      octx.beginPath();
+      octx.moveTo(img.width / 2, 0);
+      octx.lineTo(img.width / 2, img.height);
+      octx.moveTo(0, img.height / 2);
+      octx.lineTo(img.width, img.height / 2);
+      octx.stroke();
+      // Rahmenkante in Akzent: „Hier ist dein Bild“
+      octx.strokeStyle = "#32ADE6";
+      octx.lineWidth = 1.6 / t.scale;
+      octx.strokeRect(0, 0, img.width, img.height);
+      octx.restore();
+      // Glow klingt ab – Folgerender nachziehen, bis er aus ist
+      if (!straightenHoldOn && glowT > 0) {
+        window.setTimeout(scheduleDraw, 50);
+      }
+    }
+
+    if (horizonActive && st.horizon && st.horizon.length >= 1) {
+      // Horizont-Entwurf: Linie vom ersten Punkt zum Cursor (oder zum
+      // bereits gesetzten zweiten Punkt)
+      const cur = effRef.current?.pt ?? cursorImgRef.current;
+      const a = st.horizon[0];
+      const b = st.horizon.length > 1 ? st.horizon[1] : cur;
+      if (b) {
+        octx.save();
+        octx.strokeStyle = "#32ADE6";
+        octx.lineWidth = 2 / t.scale;
+        octx.lineCap = "round";
+        if (st.horizon.length === 1) octx.setLineDash([8 / t.scale, 6 / t.scale]);
+        octx.beginPath();
+        octx.moveTo(a.x, a.y);
+        octx.lineTo(b.x, b.y);
+        octx.stroke();
+        for (const q of st.horizon) {
+          octx.beginPath();
+          octx.arc(q.x, q.y, 4.5 / t.scale, 0, Math.PI * 2);
+          octx.fillStyle = "#32ADE6";
+          octx.fill();
+          octx.strokeStyle = "#fff";
+          octx.lineWidth = 1.5 / t.scale;
+          octx.stroke();
+        }
+        octx.restore();
+      }
+    }
 
     // Bei gedrehtem Zuschnitt (Geraderichten) endet das sichtbare Dokument am
     // Bildrand – Überstände (weggedrehte Ecken) werden wie bei Apple Fotos
@@ -1198,6 +1318,12 @@ export default function CanvasStage() {
       useEditor.setState({ draft: st.draft.slice(0, -1) });
       return;
     }
+    if (e.button === 2 && st.horizon !== null && st.horizon.length > 0) {
+      const rest = st.horizon.slice(0, -1);
+      if (rest.length === 0) st.cancelHorizon();
+      else useEditor.setState({ horizon: rest });
+      return;
+    }
     if (e.button === 2 && st.rectify?.active && st.rectify.points.length > 0) {
       useEditor.setState({
         rectify: { active: true, points: st.rectify.points.slice(0, -1) },
@@ -1218,6 +1344,11 @@ export default function CanvasStage() {
     }
     if (e.button !== 0) return;
 
+    if (st.horizon !== null) {
+      // Automatisch begradigen: Kante entlangziehen – Edge-Snap hilft dabei
+      st.addHorizonPoint(effRef.current.pt);
+      return;
+    }
     if (st.analysis.active) {
       roiDraftRef.current = { start: p, cur: p };
       dragRef.current = { type: "roi", start: p, cur: p };
@@ -1275,6 +1406,36 @@ export default function CanvasStage() {
         return;
       }
       case "annotate": {
+        // Erstellte Objekte bleiben greifbar: Treffer gewinnt vor Neuanlage.
+        // (Notizen/Kommentare waren nach dem Erstellen „einzementiert“.)
+        const hit = hitTest(p);
+        if (hit) {
+          if (
+            hit.m.id === st.selectedId &&
+            (hit.m.kind === "note" || hit.m.kind === "arrow")
+          ) {
+            st.setNoteEditing(hit.m.id);
+            return;
+          }
+          st.select(hit.m.id);
+          dragRef.current =
+            hit.idx >= 0
+              ? {
+                  type: "vertex",
+                  id: hit.m.id,
+                  idx: hit.idx,
+                  orig: hit.m.points[hit.idx],
+                  moved: false,
+                }
+              : {
+                  type: "move",
+                  id: hit.m.id,
+                  grab: p,
+                  start: hit.m.points,
+                  moved: false,
+                };
+          return;
+        }
         dragRef.current = { type: "annotate", start: effRef.current.pt, cur: effRef.current.pt };
         return;
       }
@@ -1318,6 +1479,15 @@ export default function CanvasStage() {
       st.tool === "count" ||
       st.tool === "annotate";
     effRef.current = wantsSnap ? computeEffective(p, e.shiftKey) : { pt: p, snapped: false };
+
+    // Greif-Feedback: über verschiebbaren Objekten „move“ zeigen – auch mit
+    // dem Anmerkungswerkzeug, das jetzt Vorhandenes auswählt statt übermalt.
+    const cont = containerRef.current;
+    if (cont && !drag && !spaceRef.current && st.horizon === null) {
+      const grabbable =
+        (st.tool === "select" || st.tool === "annotate") && !!hitTest(p);
+      cont.style.cursor = grabbable ? "move" : cursor;
+    }
 
     if (drag) {
       if (drag.type === "pan") {
@@ -1368,6 +1538,7 @@ export default function CanvasStage() {
       st.tool === "count" ||
       st.tool === "annotate" ||
       st.rectify?.active ||
+      st.horizon !== null ||
       (st.analysis.active && !drag) ||
       drag?.type === "vertex" ||
       drag?.type === "annotate";
@@ -1492,6 +1663,7 @@ export default function CanvasStage() {
         case "Escape":
           if (s.noteEditingId) s.setNoteEditing(null);
           else if (s.draft || s.pendingCalib) s.cancelDraft();
+          else if (s.horizon) s.cancelHorizon();
           else if (s.rectify?.active) s.cancelRectify();
           else if (s.analysis.active) s.exitAnalysis();
           else s.select(null);
@@ -1556,7 +1728,7 @@ export default function CanvasStage() {
   // ── Cursor-Stil ──────────────────────────────────────────────────────────
   const cursor = (() => {
     if (spaceRef.current) return "grab";
-    if (st.analysis.active || st.rectify?.active) return "crosshair";
+    if (st.analysis.active || st.rectify?.active || st.horizon !== null) return "crosshair";
     if (st.tool === "select") return "default";
     if (st.tool === "annotate") return "text";
     return "crosshair";
@@ -1599,6 +1771,16 @@ export default function CanvasStage() {
     >
       <canvas ref={imgRef} className="absolute inset-0" />
       <canvas ref={ovRef} className="absolute inset-0" />
+      {st.horizon !== null && (
+        <div
+          className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-lg bg-black/60 px-3.5 py-1.5 text-center text-xs text-white/90 shadow-lg backdrop-blur"
+          role="status"
+        >
+          {st.horizon.length === 0
+            ? "Automatisch begradigen: eine Linie entlang einer geraden Kante oder des Horizonts ziehen"
+            : "Zweiter Klick setzt den Endpunkt – das Bild richtet sich aus · Rechtsklick: zurück · Esc: abbrechen"}
+        </div>
+      )}
       {noteTarget && notePos && (
         <input
           autoFocus

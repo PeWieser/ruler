@@ -99,7 +99,9 @@ export default function Page() {
     <div className="flex h-dvh w-screen flex-col overflow-hidden bg-[var(--mw-surface-1)] text-[var(--mw-text)]">
       <TopBar onOpenImage={openFile} />
       <div className="flex min-h-0 flex-1">
-        <Toolbar />
+        {/* Ohne Bild tritt die Arbeits-Chrome zurück – die leere Bühne gehört
+            der Einladung, nicht toten Werkzeugreihen (Chrome Recedes). */}
+        {image && <Toolbar />}
         <main className="relative min-w-0 flex-1">
           <CanvasStage />
           {!image && <EmptyState onOpenImage={openFile} onSample={openSample} />}
@@ -112,9 +114,9 @@ export default function Page() {
             </div>
           )}
         </main>
-        <SidePanel />
+        {image && <SidePanel />}
       </div>
-      <StatusBar />
+      {image && <StatusBar />}
       <TooltipLayer />
       <ShortcutOverlay />
 

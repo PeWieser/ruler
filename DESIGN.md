@@ -3,8 +3,14 @@
 > Review-Perspektive: Apple-Produktdesign (Pages / Keynote / Fotos).
 > Leitfrage bei jeder Entscheidung: *Würde Jony Ive das so lassen – oder wegwerfen?*
 >
+> **Verbindliche Grundsätze stehen in [`DESIGN_GUIDELINES.md`](DESIGN_GUIDELINES.md).**
+> Dieses Dokument hier hält den Befund & die Maßnahmen der einzelnen Runden fest
+> (das *Warum* konkreter Eingriffe); bei Widerspruch gewinnt die Grundsatz-Datei.
+>
 > Status: **Phase 1 (Ausrichtung) und Phase 2 (Design-Pass) sind umgesetzt,**
-> dazu P1 aus Phase 3 vorgezogen (Kürzel-Überlagerung, siehe 1.9).
+> dazu P1 aus Phase 3 vorgezogen (Kürzel-Überlagerung, siehe 1.9) und die
+> Kritikrunde mit Modus-Fallen-Behebung, transparenter Ausrichtung und
+> greifbaren Anmerkungen (siehe 1.10).
 > Der Rest von Phase 3 ist bewusster Rückstand – begründet, priorisiert, nicht vergessen.
 
 ---
@@ -149,6 +155,40 @@ keine gelogenen Skalen.
   Eine Pro-App erklärt sich auf Zuruf – ohne Handbuch, ohne Tooltipsuche.
 - Banner werden per `role="status"` höflich angekündigt (erster Baustein
   der Barrierefreiheits-Vertiefung, Rest siehe P6).
+
+### 1.10 Kritikrunde: Modus-Fallen, transparente Ausrichtung, greifbare Objekte
+
+Aus einer konkreten Nutzer-Kritikliste entstanden; jede Zeile nennt Befund →
+Maßnahme. Die daraus abgeleiteten **dauerhaften Regeln** stehen in
+`DESIGN_GUIDELINES.md` §6 (verbindlich für alle künftigen Änderungen).
+
+- **Befund: Analyse-/Entzerrungs-Modus bleibt nach Werkzeugwahl aktiv** (Modus-Falle).
+  → `setTool` räumt jetzt jeden Fremdmodus auf (`analysis`, `rectify`, `horizon`)
+  und leert das Analyse-Bitmap. Werkzeugwechsel ist immer auch Moduswechsel.
+- **Befund: Geraderichten beschneidet das Bild, ohne es zu erklären** („Rahmen
+  bleibt gerade, Inhalt verschwindet"). → Beim Drehen (Regler gehalten,
+  Horizont-Modus oder kurzer Glow danach) zeichnet die Bühne das
+  **unbeschnittene, gedrehte Bild hinter dem festen Rahmen** (`renderOrientedFull`)
+  plus **Drittelraster** und akzentuierte Rahmenkante. Der Crop wird sichtbar
+  erklärt statt heimlich vollzogen – das Apple-Fotos-Prinzip.
+- **Befund: 0,1°-Regler ist für einen schiefen Horizont zu fummelig.** →
+  **„Automatisch begradigen"** (ScanLine-Button): eine Linie entlang einer
+  Kante ziehen; `straightenDelta` interpretiert flach → horizontal, steil →
+  vertikal, Edge-Snap hilft beim Treffen. Rechtsklick/Esc brechen ab.
+- **Befund: Maßstab-Badge ohne sichtbare Reaktion.** → Badge öffnet ein
+  **Popover** mit echtem Inhalt: kalibriert → großer px/Einheit-Wert +
+  „Neu kalibrieren", „Im Panel anpassen", „Entfernen"; unkalibriert →
+  Erklärung + „Jetzt kalibrieren". Jeder Klick antwortet.
+- **Befund: Toolbar/Panel/Statusleiste sichtbar ohne Bild.** → Diese Chrome
+  rendert nur bei geöffnetem Bild (`{image && …}`); die Kopfleiste fällt ohne
+  Bild auf eine schlanke Variante zurück (Marke, Hilfe, „Bild öffnen"). Der
+  Leerzustand gehört der Einladung.
+- **Befund: Notizen nach dem Erstellen nicht mehr bewegbar, Punkt zu klein.** →
+  Das Anmerkungswerkzeug **trifft erst Vorhandenes** (auswählen, ziehen;
+  erneuter Klick auf Auswahl = Text editieren), bevor es Neues anlegt. Der
+  Hit-Test umfasst Punkt *und* Text-Chip mit größerem Radius; Hover zeigt „move".
+- **Befund: kein Favicon.** → `src/app/icon.svg` trägt das App-Tile-Motiv
+  (Lineal-L + Akzent-Diagonale) – Identität in jedem Tab.
 
 ---
 
