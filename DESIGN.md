@@ -329,6 +329,33 @@ mit Griffen und Cursor-Versprechen; Einzelobjekt-Flächenliste im Panel.
 
 ---
 
+## 3b · Rückstand aus dem Jobs-Deep-Dive (Audit-Runde 2)
+
+Befunde mit Mikroskop-Perspektive (Hover, Touch, Einmal-Momente); priorisiert:
+
+- **D1 · Mobile Chrome-Geometrie.** Seitenpanel ist fest 302 px breit, die
+  Kopfleiste trägt ~15 Schalter ohne Umbruch – auf 390 px Telefonen bleibt der
+  Bühne kaum Raum, die Leiste läuft aus dem Viewport. *Maßnahme:* Panel unter
+  900 px als Overlay (Sheet) mit eigener Chrome, Kopfleiste in Gruppen
+  kollabieren (Export-Menü schluckt Zoom/Ansicht).
+- **D2 · Icon-Namen für Nicht-Hover-Welten.** TopBar-Icon-Buttons haben
+  `data-tip`, aber kein `aria-label` – Screenreader *und* Touch-Nutzer ohne
+  Tooltip sehen stumme Symbole. *Maßnahme:* aria-label = tr(tip) überall.
+- **D3 · Tooltips sind Hover-Monologe.** Auf Touch erscheint nie eine
+  Erklärung; Long-Press sollte den Tooltip zeigen (Plattform-Konvention).
+- **D4 · Thema folgt nur dem System.** Light/Dark via `light-dark()` ohne
+  manuellen Override – wer im dunklen Büro ein helles UI will, muss das OS
+  umstellen. *Maßnahme:* dritter Zustand „System/Hell/Dunkel" im Popover.
+- **D5 · Einmal-Momente ohne Abspann.** Erstkalibrierung, erster Export,
+  erstes Dokument: jeweils Banner/Check – aber kein einziges Mal ein kurzer,
+  warmer „Geschafft"-Moment, der hängen bleibt (z. B. Tile-Glow-Impuls im
+  Leerzustand nach erstem erfolgreichen Export).
+- **D6 · .masswerk ohne Gesicht.** Die Datei bekommt kein Icon/Thumbnail im
+  Dialog und keine Vorschau beim Drop – dabei ist sie unser Dokument.
+  *Maßnahme:* Drop-Overlay unterscheidet Bild/Dokument textlich + ikonisch.
+
+---
+
 ## 4 · Messlatte für jede künftende Änderung
 
 - Erklärt sie sich selbst? (Sonst: Tooltip mit einem Satz, nie Absatz.)
