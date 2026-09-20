@@ -244,6 +244,19 @@ export const EN: Record<string, string> = {
     "Sample loaded – calibrate on the steel ruler, e.g. 0–10 cm.",
   "Beispielbild konnte nicht geladen werden.": "The sample image could not be loaded.",
 
+  // ── Kleine Bühne, Namen, Thema, Meilensteine (D1–D6) ──────────────────────
+  "Erscheinungsbild": "Appearance",
+  "System": "System",
+  "Hell": "Light",
+  "Dunkel": "Dark",
+  "Ansicht & Werkzeuge": "View & tools",
+  "Erster Export gemeistert – alles Weitere ist Wiederholung.":
+    "First export mastered – everything after is repetition.",
+  "Erstes Dokument gesichert – diese Sitzung bleibt.":
+    "First document saved – this session stays.",
+  "Dokument loslassen": "Drop document",
+  "Stellt die gesamte Sitzung wieder her.": "Restores the entire session.",
+
   // ── Dokumente (P3) & Analyse-Details (P7) ─────────────────────────────────
   "MaßWerk-Dokument": "MaßWerk document",
   "Bild, Messungen, Maßstab, Ausrichtung – eine Datei, wieder öffnbar":

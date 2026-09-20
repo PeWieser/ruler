@@ -291,3 +291,70 @@ select option {
     height: 20px;
   }
 }
+
+/* ── Kleine Bühne: Chrome wird zum Sheet (D1) ───────────────────────────────
+   Unter 900 px ist das Seitenpanel kein Spaltennachbar, sondern ein Blatt
+   über der Bühne – mit eigenem Schatten, eigener Geste (Backdrop-Tipp),
+   eigener Ankunft. Die Kopfleiste kollabiert: Zoom lebt dort als Pinch. */
+.mw-show-sm {
+  display: none;
+}
+.mw-panel-backdrop {
+  display: none;
+}
+@keyframes mw-panel-in {
+  from {
+    transform: translateX(26px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mw-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Einmal-Momente (D5): ein Ring, der sich ausdehnt und vergeht –
+   kein Konfetti, ein Herzschlag. */
+@keyframes mw-milestone {
+  0% {
+    box-shadow: 0 0 0 0 rgba(47, 168, 74, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 22px rgba(47, 168, 74, 0);
+  }
+}
+@media (max-width: 899px) {
+  .mw-panel {
+    position: fixed;
+    top: 48px;
+    right: 0;
+    bottom: 32px;
+    width: min(320px, 88vw);
+    z-index: 45;
+    border-left: 1px solid var(--mw-border-strong);
+    box-shadow: -18px 0 48px var(--mw-shadow);
+    animation: mw-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .mw-panel-backdrop {
+    display: block;
+    position: fixed;
+    inset: 48px 0 32px 0;
+    z-index: 44;
+    background: rgba(0, 0, 0, 0.32);
+    backdrop-filter: blur(1.5px);
+    animation: mw-fade-in 0.2s ease-out;
+  }
+  .mw-hide-sm {
+    display: none !important;
+  }
+  .mw-show-sm {
+    display: flex !important;
+  }
+}

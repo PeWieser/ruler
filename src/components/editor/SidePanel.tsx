@@ -879,7 +879,15 @@ export default function SidePanel() {
   };
 
   return (
-    <aside className="flex w-[302px] shrink-0 flex-col border-l border-[var(--mw-border)] bg-[var(--mw-surface-2)]">
+    <>
+      {/* Auf kleinen Gläsern: Blatt über der Bühne, Tipp auf den Hintergrund
+          schließt – Chrome ist Gast, nicht Nachbar (D1). */}
+      <div
+        className="mw-panel-backdrop"
+        onPointerDown={() => useEditor.getState().setPanelOpen(false)}
+        aria-hidden
+      />
+      <aside className="mw-panel flex w-[302px] shrink-0 flex-col border-l border-[var(--mw-border)] bg-[var(--mw-surface-2)]">
       <div className="flex gap-1 border-b border-[var(--mw-border)] p-1.5">
         {TABS.map((t) => (
           <button
@@ -901,6 +909,7 @@ export default function SidePanel() {
         {tab === "kalib" && <KalibTab />}
         {tab === "bild" && <BildTab />}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

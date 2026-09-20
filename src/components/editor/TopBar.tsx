@@ -14,11 +14,15 @@ import {
   Loader2,
   Magnet,
   Maximize,
+  Monitor,
+  Moon,
+  MoreHorizontal,
   PanelRightClose,
   PanelRightOpen,
   Redo2,
   Ruler,
   Save,
+  Sun,
   Undo2,
   ZoomIn,
   ZoomOut,
@@ -66,6 +70,8 @@ export default function TopBar({
   const scale = useView((s) => s.scale);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scaleOpen, setScaleOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [milestone, setMilestone] = useState<"export" | "doc" | null>(null);
   const [pngBusy, setPngBusy] = useState(0); // 0 = frei, >0 Fortschritt
   const [pngDone, setPngDone] = useState(false);
   const [calibPulse, setCalibPulse] = useState(false);
@@ -77,14 +83,15 @@ export default function TopBar({
   const canRedo = st.future.length > 0;
 
   useEffect(() => {
-    if (!menuOpen && !scaleOpen) return;
+    if (!menuOpen && !scaleOpen && !moreOpen) return;
     const close = () => {
       setMenuOpen(false);
       setScaleOpen(false);
+      setMoreOpen(false);
     };
     window.addEventListener("pointerdown", close);
     return () => window.removeEventListener("pointerdown", close);
-  }, [menuOpen, scaleOpen]);
+  }, [menuOpen, scaleOpen, moreOpen]);
 
   // Kurzer, einmaliger Glanz-Impuls am Maßstab-Badge, sobald kalibriert wird
   useEffect(() => {
@@ -112,11 +119,33 @@ export default function TopBar({
       });
       setPngDone(true);
       setTimeout(() => setPngDone(false), 1500);
+      // Einmal-Moment (D5): der erste Export bekommt einen Herzschlag,
+      // kein Konfetti – und danach nie wieder einen.
+      try {
+        if (!localStorage.getItem("mw-milestone-export")) {
+          localStorage.setItem("mw-milestone-export", "1");
+          setMilestone("export");
+          setTimeout(() => setMilestone(null), 1600);
+          useEditor
+            .getState()
+            .setBanner(
+              tr("Erster Export gemeistert – alles Weitere ist Wiederholung."),
+            );
+        }
+      } catch {
+        // ohne Speicher kein Meilenstein – der Export zählt trotzdem
+      }
     } finally {
       st.setExportBusy(false);
       setPngBusy(0);
     }
   };
+
+  const themeNext =
+    st.theme === "system" ? "light" : st.theme === "light" ? "dark" : "system";
+  const themeLabel = tr(
+    st.theme === "system" ? "System" : st.theme === "light" ? "Hell" : "Dunkel",
+  );
 
   const iconBtn =
     "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--mw-text-dim)] transition-colors duration-150 hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)] active:bg-[var(--mw-hover-strong)] disabled:opacity-30";
@@ -143,6 +172,23 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
+          aria-label={tr("Erscheinungsbild")}
+          data-tip={tr("Erscheinungsbild")}
+          data-desc={themeLabel}
+          onClick={() => st.setTheme(themeNext)}
+        >
+          {st.theme === "system" ? (
+            <Monitor size={16} />
+          ) : st.theme === "light" ? (
+            <Sun size={16} />
+          ) : (
+            <Moon size={16} />
+          )}
+        </button>
+        <button
+          type="button"
+          className={iconBtn}
+          aria-label={tr("Sprache wechseln")}
           data-tip={tr("Sprache wechseln")}
           data-desc={locale === "de" ? "English" : "Deutsch"}
           onClick={() => setLocale(locale === "de" ? "en" : "de")}
@@ -152,6 +198,7 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
+          aria-label={tr("Tastaturkürzel")}
           data-tip={tr("Tastaturkürzel")}
           data-key="?"
           onClick={() => st.setHelpOpen(true)}
@@ -190,6 +237,7 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
+          aria-label={tr("Bild öffnen")}
           data-tip={tr("Bild öffnen")}
           data-desc={tr("JPG · PNG · WebP · BMP · TIFF")}
           onClick={() => fileRef.current?.click()}
@@ -197,7 +245,7 @@ export default function TopBar({
           <FolderOpen size={16} />
         </button>
         {st.image && (
-          <span className="max-w-44 truncate text-[12.5px] text-[var(--mw-text-faint)]">
+          <span className="mw-hide-sm max-w-44 truncate text-[12.5px] text-[var(--mw-text-faint)]">
             {st.image.name}
           </span>
         )}
@@ -339,6 +387,7 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
+          aria-label={tr("Rückgängig")}
           data-tip={tr("Rückgängig")}
           data-key={tr("Strg+Z")}
           disabled={!canUndo}
@@ -349,6 +398,7 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
+          aria-label={tr("Wiederholen")}
           data-tip={tr("Wiederholen")}
           data-key={tr("Strg+Y")}
           disabled={!canRedo}
@@ -357,11 +407,81 @@ export default function TopBar({
           <Redo2 size={16} />
         </button>
 
-        <span className="mx-1 h-5 w-px bg-[var(--mw-border)]" />
+        <span className="mx-1 h-5 w-px bg-[var(--mw-border)] mw-hide-sm" />
+
+        {/* Kleine Bühne: eine einzige Tür für Ansicht & Fang (D1) */}
+        <div
+          className="relative mw-show-sm"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className={iconBtn}
+            aria-label={tr("Ansicht & Werkzeuge")}
+            aria-expanded={moreOpen}
+            aria-haspopup="dialog"
+            data-tip={tr("Ansicht & Werkzeuge")}
+            disabled={!hasImage}
+            onClick={() => setMoreOpen((v) => !v)}
+          >
+            <MoreHorizontal size={16} />
+          </button>
+          {moreOpen && (
+            <div
+              className="animate-pop-in absolute right-0 top-10 z-30 w-56 origin-top-right overflow-hidden rounded-xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] p-1 shadow-xl"
+              style={{ boxShadow: "0 16px 40px var(--mw-shadow)" }}
+              role="dialog"
+              aria-label={tr("Ansicht & Werkzeuge")}
+            >
+              <button
+                type="button"
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)]"
+                onClick={() => {
+                  setMoreOpen(false);
+                  st.fireViewCmd("fit");
+                }}
+              >
+                <Maximize size={15.5} className="text-[var(--mw-text-faint)]" />
+                <span className="flex-1">{tr("Einpassen")}</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)]"
+                onClick={() => {
+                  setMoreOpen(false);
+                  st.fireViewCmd("100");
+                }}
+              >
+                <ZoomIn size={15.5} className="text-[var(--mw-text-faint)]" />
+                <span className="flex-1">{tr("100 % anzeigen")}</span>
+              </button>
+              <div className="mx-1 my-1 h-px bg-[var(--mw-border)]" />
+              <button
+                type="button"
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)]"
+                onClick={() => st.setSnap(!st.snap)}
+              >
+                <Magnet size={15.5} className="text-[var(--mw-text-faint)]" />
+                <span className="flex-1">{tr("Kantenfang")}</span>
+                {st.snap && <Check size={14} className="text-[var(--mw-accent-text)]" />}
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)]"
+                onClick={() => st.setScaleBar(!st.scaleBar)}
+              >
+                <Ruler size={15.5} className="text-[var(--mw-text-faint)]" />
+                <span className="flex-1">{tr("Maßstabsbalken")}</span>
+                {st.scaleBar && <Check size={14} className="text-[var(--mw-accent-text)]" />}
+              </button>
+            </div>
+          )}
+        </div>
 
         <button
           type="button"
-          className={iconBtn}
+          className={`${iconBtn} mw-hide-sm`}
+          aria-label={tr("Verkleinern")}
           data-tip={tr("Verkleinern")}
           data-key="−"
           disabled={!hasImage}
@@ -371,18 +491,20 @@ export default function TopBar({
         </button>
         <button
           type="button"
+          aria-label={tr("100 % anzeigen")}
           data-tip={tr("100 % anzeigen")}
           data-desc={tr("Ein Bildpixel entspricht einem Bildschirmpixel")}
           data-key="1"
           disabled={!hasImage}
           onClick={() => st.fireViewCmd("100")}
-          className="flex h-8 w-14 items-center justify-center rounded-lg font-tabular text-[12px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)] disabled:opacity-30"
+          className="mw-hide-sm flex h-8 w-14 items-center justify-center rounded-lg font-tabular text-[12px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)] disabled:opacity-30"
         >
           {Math.round(scale * 100)} %
         </button>
         <button
           type="button"
-          className={iconBtn}
+          className={`${iconBtn} mw-hide-sm`}
+          aria-label={tr("Vergrößern")}
           data-tip={tr("Vergrößern")}
           data-key="+"
           disabled={!hasImage}
@@ -392,7 +514,8 @@ export default function TopBar({
         </button>
         <button
           type="button"
-          className={iconBtn}
+          className={`${iconBtn} mw-hide-sm`}
+          aria-label={tr("Einpassen")}
           data-tip={tr("Einpassen")}
           data-desc={tr("Ganzes Bild anzeigen")}
           data-key="0"
@@ -402,11 +525,12 @@ export default function TopBar({
           <Maximize size={16} />
         </button>
 
-        <span className="mx-1 h-5 w-px bg-[var(--mw-border)]" />
+        <span className="mx-1 h-5 w-px bg-[var(--mw-border)] mw-hide-sm" />
 
         <button
           type="button"
-          className={toggleBtn(st.snap)}
+          className={`${toggleBtn(st.snap)} mw-hide-sm`}
+          aria-label={tr("Kantenfang")}
           data-tip={tr("Kantenfang")}
           data-desc={tr("Punkte rasten an Kanten ein · Shift: frei")}
           data-key="S"
@@ -417,7 +541,8 @@ export default function TopBar({
         </button>
         <button
           type="button"
-          className={toggleBtn(st.scaleBar)}
+          className={`${toggleBtn(st.scaleBar)} mw-hide-sm`}
+          aria-label={tr("Maßstabsbalken")}
           data-tip={tr("Maßstabsbalken")}
           data-desc={tr("Im Bild und im Export anzeigen")}
           disabled={!hasImage}
@@ -436,12 +561,19 @@ export default function TopBar({
             type="button"
             disabled={!hasImage}
             onClick={() => setMenuOpen((v) => !v)}
+            aria-label={tr("Exportieren")}
             data-tip={tr("Exportieren")}
             data-desc={tr("PNG mit Messungen · CSV · Excel")}
-            className={`flex h-8 items-center gap-2 rounded-lg px-3 text-[12.5px] font-medium text-white transition-all duration-150 active:scale-[0.98] disabled:opacity-30 ${
+            className={`relative flex h-8 items-center gap-2 rounded-lg px-3 text-[12.5px] font-medium text-white transition-all duration-150 active:scale-[0.98] disabled:opacity-30 ${
               pngDone ? "bg-[#2FA84A]" : "bg-[var(--mw-accent)] hover:bg-[var(--mw-accent-strong)]"
             }`}
           >
+            {milestone && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-lg animate-[mw-milestone_1.4s_cubic-bezier(0.16,1,0.3,1)_forwards]"
+              />
+            )}
             {pngDone ? (
               <Check size={15} />
             ) : pngBusy > 0 ? (
@@ -498,7 +630,21 @@ export default function TopBar({
                 onClick={() => {
                   setMenuOpen(false);
                   const json = st.serializeDocument();
-                  if (json && st.image) exportDocument(json, st.image.name);
+                  if (json && st.image) {
+                    exportDocument(json, st.image.name);
+                    try {
+                      if (!localStorage.getItem("mw-milestone-doc")) {
+                        localStorage.setItem("mw-milestone-doc", "1");
+                        setMilestone("doc");
+                        setTimeout(() => setMilestone(null), 1600);
+                        useEditor
+                          .getState()
+                          .setBanner(tr("Erstes Dokument gesichert – diese Sitzung bleibt."));
+                      }
+                    } catch {
+                      // Meilenstein ist Zugabe, nicht Voraussetzung
+                    }
+                  }
                 }}
               >
                 <Save size={15.5} className="text-[var(--mw-text-faint)]" />
@@ -512,6 +658,23 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
+          aria-label={tr("Erscheinungsbild")}
+          data-tip={tr("Erscheinungsbild")}
+          data-desc={themeLabel}
+          onClick={() => st.setTheme(themeNext)}
+        >
+          {st.theme === "system" ? (
+            <Monitor size={16} />
+          ) : st.theme === "light" ? (
+            <Sun size={16} />
+          ) : (
+            <Moon size={16} />
+          )}
+        </button>
+        <button
+          type="button"
+          className={iconBtn}
+          aria-label={tr("Sprache wechseln")}
           data-tip={tr("Sprache wechseln")}
           data-desc={locale === "de" ? "English" : "Deutsch"}
           onClick={() => setLocale(locale === "de" ? "en" : "de")}
@@ -521,6 +684,7 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
+          aria-label={tr("Tastaturkürzel")}
           data-tip={tr("Tastaturkürzel")}
           data-key="?"
           onClick={() => st.setHelpOpen(true)}
@@ -530,6 +694,7 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
+          aria-label={tr("Seitenleiste")}
           data-tip={tr("Seitenleiste")}
           data-desc={tr("Panel ein- oder ausblenden")}
           onClick={() => st.setPanelOpen(!st.panelOpen)}

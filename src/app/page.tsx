@@ -107,6 +107,13 @@ export default function Page() {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  // Erscheinungsbild: gesetzter Wunsch gilt ab erster Paint (D4)
+  const theme = useEditor((s) => s.theme);
+  useEffect(() => {
+    document.documentElement.style.colorScheme =
+      theme === "system" ? "" : theme;
+  }, [theme]);
+
   // Banner blendet sich selbst aus
   useEffect(() => {
     if (!banner) return;

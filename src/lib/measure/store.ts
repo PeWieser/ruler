@@ -180,6 +180,9 @@ interface EditorState {
   noteEditingId: string | null;
   activeCountId: string | null;
   helpOpen: boolean;
+  /** Erscheinungsbild: System folgt, Hell/Dunkel setzen sich durch (D4). */
+  theme: "system" | "light" | "dark";
+  setTheme: (t: "system" | "light" | "dark") => void;
   past: Snap[];
   future: Snap[];
   viewCmd: ViewCmd;
@@ -435,6 +438,12 @@ export const useEditor = create<EditorState>()((set, get) => {
     noteEditingId: null,
     activeCountId: null,
     helpOpen: false,
+    theme:
+      typeof localStorage !== "undefined" &&
+      (localStorage.getItem("mw-theme") === "light" ||
+        localStorage.getItem("mw-theme") === "dark")
+        ? (localStorage.getItem("mw-theme") as "light" | "dark")
+        : "system",
     past: [],
     future: [],
     viewCmd: { seq: 0, cmd: "fit" },
@@ -1190,6 +1199,17 @@ export const useEditor = create<EditorState>()((set, get) => {
     },
     setNoteEditing: (id) => set({ noteEditingId: id }),
     setHelpOpen: (v) => set({ helpOpen: v }),
+    setTheme: (t) => {
+      try {
+        localStorage.setItem("mw-theme", t);
+      } catch {
+        // ohne Persistenz bleibt der Wunsch trotzdem gesetzt
+      }
+      if (typeof document !== "undefined") {
+        document.documentElement.style.colorScheme = t === "system" ? "" : t;
+      }
+      set({ theme: t });
+    },
     fireViewCmd: (cmd) => set((s) => ({ viewCmd: { seq: s.viewCmd.seq + 1, cmd } })),
     setBanner: (b) => set({ banner: b }),
     setExportBusy: (v) => set({ exportBusy: v }),

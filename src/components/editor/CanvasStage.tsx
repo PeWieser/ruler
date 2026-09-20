@@ -1841,6 +1841,17 @@ export default function CanvasStage() {
   };
 
   const onDoubleClick = () => {
+    // Doppeltippen auf Glas: ganzes Bild zeigen – die Geste, die das
+    // fehlende Zoom-Cluster auf kleinen Bühnen ersetzt (D1).
+    if (
+      touchRef.current &&
+      !st.draft &&
+      st.tool !== "polyline" &&
+      st.tool !== "polygon"
+    ) {
+      st.fireViewCmd("fit");
+      return;
+    }
     if (st.tool === "polyline" || st.tool === "polygon") {
       // letzten Duplikatpunkt entfernen, dann abschließen
       const d = st.draft;

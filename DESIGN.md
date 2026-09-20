@@ -329,30 +329,28 @@ mit Griffen und Cursor-Versprechen; Einzelobjekt-Flächenliste im Panel.
 
 ---
 
-## 3b · Rückstand aus dem Jobs-Deep-Dive (Audit-Runde 2)
+## 3b · Jobs-Deep-Dive (Audit-Runde 2) – umgesetzt als D1–D6
 
-Befunde mit Mikroskop-Perspektive (Hover, Touch, Einmal-Momente); priorisiert:
-
-- **D1 · Mobile Chrome-Geometrie.** Seitenpanel ist fest 302 px breit, die
-  Kopfleiste trägt ~15 Schalter ohne Umbruch – auf 390 px Telefonen bleibt der
-  Bühne kaum Raum, die Leiste läuft aus dem Viewport. *Maßnahme:* Panel unter
-  900 px als Overlay (Sheet) mit eigener Chrome, Kopfleiste in Gruppen
-  kollabieren (Export-Menü schluckt Zoom/Ansicht).
-- **D2 · Icon-Namen für Nicht-Hover-Welten.** TopBar-Icon-Buttons haben
-  `data-tip`, aber kein `aria-label` – Screenreader *und* Touch-Nutzer ohne
-  Tooltip sehen stumme Symbole. *Maßnahme:* aria-label = tr(tip) überall.
-- **D3 · Tooltips sind Hover-Monologe.** Auf Touch erscheint nie eine
-  Erklärung; Long-Press sollte den Tooltip zeigen (Plattform-Konvention).
-- **D4 · Thema folgt nur dem System.** Light/Dark via `light-dark()` ohne
-  manuellen Override – wer im dunklen Büro ein helles UI will, muss das OS
-  umstellen. *Maßnahme:* dritter Zustand „System/Hell/Dunkel" im Popover.
-- **D5 · Einmal-Momente ohne Abspann.** Erstkalibrierung, erster Export,
-  erstes Dokument: jeweils Banner/Check – aber kein einziges Mal ein kurzer,
-  warmer „Geschafft"-Moment, der hängen bleibt (z. B. Tile-Glow-Impuls im
-  Leerzustand nach erstem erfolgreichen Export).
-- **D6 · .masswerk ohne Gesicht.** Die Datei bekommt kein Icon/Thumbnail im
-  Dialog und keine Vorschau beim Drop – dabei ist sie unser Dokument.
-  *Maßnahme:* Drop-Overlay unterscheidet Bild/Dokument textlich + ikonisch.
+- **D1 · Mobile Chrome-Geometrie – ERLEDIGT.** Unter 900 px wird das Panel
+  zum Sheet über der Bühne (eigener Schatten, eigene Ankunft, Backdrop-Tipp
+  schließt); die Kopfleiste kollabiert: Zoom-Cluster, Fang und Maßstabsbalken
+  wandern in eine einzige Tür („Ansicht & Werkzeuge"), Zoom lebt auf Glas als
+  Pinch, Doppeltippen passt ein.
+- **D2 · Icon-Namen – ERLEDIGT.** Jede Icon-Schaltfläche der Kopfleiste trägt
+  jetzt `aria-label` = Tooltip-Titel; Screenreader und Touch hören dieselbe
+  Sprache wie die Sehenden.
+- **D3 · Long-Press-Tooltips – ERLEDIGT.** Auf Touch/Stift zeigt 400 ms Halten
+  die Erklärung, Loslassen lässt sie 1,1 s zum Lesen stehen – die
+  Plattform-Konvention statt Hover-Monolog.
+- **D4 · Thema mit eigenem Willen – ERLEDIGT.** System/Hell/Dunkel als
+  Zustand im Store (persistiert, `color-scheme` am Root), Schalter mit
+  Monitor/Sonne/Mond; das Produkt fragt den Menschen, nicht das OS.
+- **D5 · Abspann-Momente – ERLEDIGT.** Erster Export und erstes Dokument
+  bekommen je einen Herzschlag-Ring am Export-Button und einen einzigen
+  Banner-Satz – einmal im Leben, dann nie wieder. Kein Konfetti.
+- **D6 · Dokument mit Gesicht – ERLEDIGT.** Das Drop-Overlay erkennt beim
+  Schweben, ob ein Bild oder ein `.masswerk`-Dokument kommt, und wechselt
+  Ikone (Gelb statt Blau), Titel und Untertitel.
 
 ---
 

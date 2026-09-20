@@ -90,14 +90,48 @@ export default function TooltipLayer() {
       else timer.current = window.setTimeout(() => show(target), SHOW_DELAY);
     };
 
+    // Touch & Stift: kein Hover, also Long-Press – die Plattform-Konvention.
+    // Halten zeigt die Erklärung, Loslassen lässt sie kurz zum Lesen stehen.
+    let grace: number | null = null;
+    const onDown = (e: PointerEvent) => {
+      if (grace !== null) {
+        window.clearTimeout(grace);
+        grace = null;
+      }
+      if (e.pointerType === "mouse") {
+        hide();
+        return;
+      }
+      const target = (e.target as HTMLElement).closest?.(
+        "[data-tip]",
+      ) as HTMLElement | null;
+      if (!target) {
+        hide();
+        return;
+      }
+      clearTimer();
+      current.current = target;
+      timer.current = window.setTimeout(() => show(target), 400);
+    };
+    const onUp = () => {
+      clearTimer();
+      if (shownRef.current) {
+        grace = window.setTimeout(hide, 1100);
+      }
+    };
+
     window.addEventListener("mouseover", onOver);
-    window.addEventListener("pointerdown", hide, true);
+    window.addEventListener("pointerdown", onDown, true);
+    window.addEventListener("pointerup", onUp, true);
+    window.addEventListener("pointercancel", onUp, true);
     window.addEventListener("keydown", hide, true);
     window.addEventListener("scroll", hide, true);
     window.addEventListener("resize", hide);
     return () => {
       window.removeEventListener("mouseover", onOver);
-      window.removeEventListener("pointerdown", hide, true);
+      window.removeEventListener("pointerdown", onDown, true);
+      window.removeEventListener("pointerup", onUp, true);
+      window.removeEventListener("pointercancel", onUp, true);
       window.removeEventListener("keydown", hide, true);
       window.removeEventListener("scroll", hide, true);
       window.removeEventListener("resize", hide);
