@@ -10,7 +10,8 @@
 > Status: **Phase 1 (Ausrichtung) und Phase 2 (Design-Pass) sind umgesetzt,**
 > dazu P1 (Kürzel-Übersicht, 1.9), die Kritikrunde (1.10), P2 GPU-Pipeline
 > (1.11) sowie P4 Touch (1.12), P5 i18n (1.13) und P6 Barrierefreiheit (1.14).
-> Verbleiben bewusst: P3 Dokument-Modell und P7 Analyse-Feinschliff.
+> Phase 3 ist damit vollständig abgetragen; neuer Rückstand wird bewusst
+> aufgenommen und hier begründet – aktuell: keiner.
 
 ---
 
@@ -245,6 +246,32 @@ Maßnahme. Die daraus abgeleiteten **dauerhaften Regeln** stehen in
 Objektivkorrektur laufen jetzt latenzfrei über einen einzigen WebGL-Kontext;
 die CPU-Kette bleibt ehrlicher Rückfall für Systeme ohne WebGL.
 
+### 1.15 Analyse-Feinschliff (P7)
+
+- **ROI bleibt greifbar:** steht ein Auswertebereich, zeigen vier Eckgriffe
+  seine Skalierbarkeit; der Körper verschiebt, ein Klick außerhalb beginnt
+  einen neuen Bereich. Griffe bekommen eigene Cursor (nwse/nesw-resize, move) –
+  die Bühne verspricht die Aktion, bevor der Finger sie prüft.
+- **Undo-Ehrlichkeit:** der erste echte Move/Pull eines Griffs pusht einen
+  History-Zustand; ROI-Änderungen sind damit so umkehrbar wie jede Messung.
+- **Einzelobjekt-Flächen:** die Ergebnisliste im Panel zeigt jedes Objekt
+  (absteigend nach Fläche) mit eigener Fläche in der aktiven Einheit –
+  statt nur einer Summe, die nichts beweist.
+
+### 1.16 Dokument-Modell (P3)
+
+- **`.masswerk`-Datei:** ein JSON (Format+Version, Bild-Data-URL, Messungen,
+  Kalibrierung, Ausrichtung, Lens-k, Filter, Maßstabsbalken, Snap) – gespeichert
+  über das Export-Menü, geöffnet über Dateidialog *und* Drag & Drop
+  (`.masswerk` ist jetzt ein akzeptierter Typ im Transfer).
+- `loadDocumentText` validiert Format/Version/Payload und wirft sonst –
+  der Fänger meldet einen eigenen, passenden Banner-Text.
+- Beim Laden wird die Register-Kette sauber zurückgesetzt (original, processed,
+  capture, orientFull, Analyse-Bitmap), History leer, Werkzeug Select –
+  ein Dokument ist eine Sitzung, keine Schichtung.
+- Mehrere Bilder in Tabs bleibt möglich, weil jeder Tab seine eigene lokale
+  Sitzung hält; das Dokument ist die Brücke zwischen den Sitzungen.
+
 ### 1.12 Touch & Stift (P4)
 
 - **Pinch-Zoom + Zwei-Finger-Pan** in CanvasStage: Zeiger-Map, inkrementelle
@@ -285,9 +312,8 @@ die CPU-Kette bleibt ehrlicher Rückfall für Systeme ohne WebGL.
 
 ## 3 · Rückstand (Phase 3) – priorisiert
 
-**P3 · Dokument-Modell.** „Dokument öffnen/speichern" (.masswerk-Datei) statt
-nur LocalStorage-Sitzung; mehrere Bilder in Tabs. Ausrichtung/Entzerrung sind
-dafür bereits als reproduzierbare Transformationskette modelliert.
+**P3 · Dokument-Modell – ERLEDIGT** (siehe 1.16). `.masswerk` speichern/öffnen
+inkl. Drag & Drop; mehrere Tabs bleiben unabhängig, das Dokument verbindet sie.
 
 **P4 · Touch & Stift – ERLEDIGT** (siehe 1.12). Pinch-Zoom, Zwei-Finger-Pan,
 größere Trefferflächen; Geste annulliert frisch gesetzte Streupunkte.
@@ -298,8 +324,8 @@ vollständig migriert, Sprachschalter in der Kopfleiste.
 **P6 · Barrierefreiheit – ERLEDIGT** (siehe 1.14). Canvas-Fokus, Live-Region
 für Messwerte, Kontrast-Token in Light und Dark auf AA.
 
-**P7 · Analyse-Feinschliff.** ROI nach dem Aufziehen verschiebbar/
-skalierbar machen; Ergebnisliste mit Einzelobjekt-Flächen statt nur Summe.
+**P7 · Analyse-Feinschliff – ERLEDIGT** (siehe 1.15). ROI verschieb-/skalierbar
+mit Griffen und Cursor-Versprechen; Einzelobjekt-Flächenliste im Panel.
 
 ---
 
