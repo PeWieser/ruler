@@ -22,6 +22,7 @@ import { orientationActive, renderOriented, renderOrientedFull } from "@/lib/mea
 import { boxBlur, morphClose, otsuThreshold } from "@/lib/measure/geometry";
 import { drawChip, drawMeasurement, type RenderEnv } from "@/lib/measure/render";
 import { loadFromDataUrl } from "@/lib/measure/loadImage";
+import { t, useT } from "@/lib/i18n";
 import {
   PALETTE,
   filtersActive,
@@ -100,6 +101,7 @@ function srcDimsMatch(src: CanvasImageSource, w: number, h: number): boolean {
 }
 
 export default function CanvasStage() {
+  const tr = useT();
   const st = useEditor();
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLCanvasElement>(null);
@@ -111,6 +113,15 @@ export default function CanvasStage() {
   const effRef = useRef<{ pt: Pt; snapped: boolean } | null>(null);
   const roiDraftRef = useRef<{ start: Pt; cur: Pt } | null>(null);
   const spaceRef = useRef(false);
+  // Multitouch: aktive Zeiger, laufende Pinch-Geste, grober Zeiger?
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const gestureRef = useRef<{ d: number; c: { x: number; y: number } } | null>(null);
+  const touchRef = useRef(false);
+  // Merkt, welcher Einzel-Aktionspunkt der letzte Fingertipp setzte – die
+  // zweite Fingerkuppe annulliert ihn binnen 700 ms (kein Streupunkt).
+  const downActionRef = useRef<
+    { kind: "draft" | "horizon" | "rectify"; t: number } | null
+  >(null);
   const drawPending = useRef(false);
   const drawImplRef = useRef<() => void>(() => {});
   const restoredRef = useRef(false);
@@ -241,7 +252,8 @@ export default function CanvasStage() {
   // ── Hit-Test ─────────────────────────────────────────────────────────────
   const hitTest = useCallback(
     (p: Pt): Hit | null => {
-      const tol = 9 / tRef.current.scale;
+      // Touch braucht größere Trefferflächen als die Maus (P4)
+      const tol = (touchRef.current ? 16 : 9) / tRef.current.scale;
       const list = [...useEditor.getState().measurements].reverse();
       for (const m of list) {
         if (!m.visible) continue;
@@ -1379,6 +1391,42 @@ export default function CanvasStage() {
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!st.image) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    if (e.pointerType === "touch") touchRef.current = true;
+    else if (e.pointerType === "mouse") touchRef.current = false;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Zweite Fingerkuppe: Pinch-Zoom + Zwei-Finger-Pan beginnen. Die laufende
+    // Einzelaktion tritt zurück; ein frisch gesetzter Punkt wird annulliert.
+    if (pointersRef.current.size === 2) {
+      const [p1, p2] = [...pointersRef.current.values()];
+      const rect = containerRef.current?.getBoundingClientRect();
+      gestureRef.current = {
+        d: Math.max(24, Math.hypot(p1.x - p2.x, p1.y - p2.y)),
+        c: {
+          x: (p1.x + p2.x) / 2 - (rect?.left ?? 0),
+          y: (p1.y + p2.y) / 2 - (rect?.top ?? 0),
+        },
+      };
+      dragRef.current = null;
+      roiDraftRef.current = null;
+      loupeRef.current.show = false;
+      const act = downActionRef.current;
+      if (act && performance.now() - act.t < 700) {
+        if (act.kind === "draft" && st.draft && st.draft.length > 0) {
+          useEditor.setState({ draft: st.draft.slice(0, -1) });
+        } else if (act.kind === "horizon" && st.horizon && st.horizon.length > 0) {
+          useEditor.setState({ horizon: st.horizon.slice(0, -1) });
+        } else if (act.kind === "rectify" && st.rectify && st.rectify.points.length > 0) {
+          useEditor.setState({
+            rectify: { active: true, points: st.rectify.points.slice(0, -1) },
+          });
+        }
+      }
+      downActionRef.current = null;
+      return;
+    }
+    downActionRef.current = null;
+
     const p = toImage(e.clientX, e.clientY);
     cursorImgRef.current = p;
     effRef.current = computeEffective(p, e.shiftKey);
@@ -1417,6 +1465,7 @@ export default function CanvasStage() {
     if (st.horizon !== null) {
       // Automatisch begradigen: Kante entlangziehen – Edge-Snap hilft dabei
       st.addHorizonPoint(effRef.current.pt);
+      downActionRef.current = { kind: "horizon", t: performance.now() };
       return;
     }
     if (st.analysis.active) {
@@ -1426,6 +1475,7 @@ export default function CanvasStage() {
     }
     if (st.rectify?.active) {
       st.addRectifyPoint(effRef.current.pt);
+      downActionRef.current = { kind: "rectify", t: performance.now() };
       return;
     }
 
@@ -1530,12 +1580,44 @@ export default function CanvasStage() {
         }
         lastClickRef.current = { x: ep.x, y: ep.y, t: now };
         st.addDraftPoint(ep);
+        downActionRef.current = { kind: "draft", t: now };
         return;
       }
     }
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (e.pointerType === "touch") touchRef.current = true;
+    else if (e.pointerType === "mouse") touchRef.current = false;
+
+    // Pinch-Zoom + Zwei-Finger-Pan: inkrementell pro Move, damit die Geste
+    // unabhängig von der absoluten Finger spreizung ruhig läuft.
+    if (gestureRef.current && pointersRef.current.size === 2) {
+      const [p1, p2] = [...pointersRef.current.values()];
+      const rect = containerRef.current?.getBoundingClientRect();
+      const d = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+      const c = {
+        x: (p1.x + p2.x) / 2 - (rect?.left ?? 0),
+        y: (p1.y + p2.y) / 2 - (rect?.top ?? 0),
+      };
+      const g = gestureRef.current;
+      zoomAt(c.x, c.y, d / g.d);
+      tRef.current = {
+        scale: tRef.current.scale,
+        x: tRef.current.x + (c.x - g.c.x),
+        y: tRef.current.y + (c.y - g.c.y),
+      };
+      g.d = Math.max(24, d);
+      g.c = c;
+      loupeRef.current.show = false;
+      pushZoomUi();
+      scheduleDraw();
+      return;
+    }
+
     const p = toImage(e.clientX, e.clientY);
     cursorImgRef.current = p;
     const rect = containerRef.current?.getBoundingClientRect();
@@ -1627,6 +1709,11 @@ export default function CanvasStage() {
     updateCoordsDom();
   };
 
+  const releasePointer = (id: number) => {
+    pointersRef.current.delete(id);
+    if (pointersRef.current.size < 2) gestureRef.current = null;
+  };
+
   const onPointerLeave = () => {
     loupeRef.current.show = false;
     cursorImgRef.current = null;
@@ -1637,8 +1724,10 @@ export default function CanvasStage() {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    releasePointer(e.pointerId);
     const drag = dragRef.current;
     dragRef.current = null;
+    if (gestureRef.current) return; // Geste endet – kein Werkzeug-Abschluss
     if (!drag) return;
     if (drag.type === "annotate") {
       const d0 = dist(drag.start, drag.cur);
@@ -1763,7 +1852,7 @@ export default function CanvasStage() {
         const s2 = useEditor.getState();
         const next = !s2.snap;
         s2.setSnap(next);
-        s2.setBanner(next ? "Kantenfang aktiviert" : "Kantenfang deaktiviert");
+        s2.setBanner(t(next ? "Kantenfang aktiviert" : "Kantenfang deaktiviert"));
         return;
       }
       const toolKeys: Record<string, ToolId> = {
@@ -1826,13 +1915,17 @@ export default function CanvasStage() {
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 touch-none overflow-hidden outline-none"
+      tabIndex={0}
+      role="application"
+      aria-label={tr("Mess-Bühne: Bild mit Messwerkzeugen, per Tastatur und Zeiger bedienbar")}
+      className="absolute inset-0 touch-none overflow-hidden"
       style={{ cursor }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerLeave}
-      onPointerCancel={() => {
+      onPointerCancel={(e) => {
+        releasePointer(e.pointerId);
         dragRef.current = null;
         onPointerLeave();
       }}
@@ -1847,8 +1940,8 @@ export default function CanvasStage() {
           role="status"
         >
           {st.horizon.length === 0
-            ? "Automatisch begradigen: eine Linie entlang einer geraden Kante oder des Horizonts ziehen"
-            : "Zweiter Klick setzt den Endpunkt – das Bild richtet sich aus · Rechtsklick: zurück · Esc: abbrechen"}
+            ? tr("Automatisch begradigen: eine Linie entlang einer geraden Kante oder des Horizonts ziehen")
+            : tr("Zweiter Klick setzt den Endpunkt – das Bild richtet sich aus · Rechtsklick: zurück · Esc: abbrechen")}
         </div>
       )}
       {noteTarget && notePos && (
@@ -1863,7 +1956,7 @@ export default function CanvasStage() {
             e.stopPropagation();
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          placeholder="Beschriftung …"
+          placeholder={tr("Beschriftung …")}
           className="absolute z-20 -translate-y-8 rounded-md border border-white/15 bg-[#141419] px-2.5 py-1.5 text-[13px] text-white shadow-xl outline-none placeholder:text-white/30 focus:border-[#60A5FA]"
           style={{ left: notePos.x + 10, top: notePos.y - 4, minWidth: 170 }}
         />

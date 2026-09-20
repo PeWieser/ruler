@@ -5,6 +5,7 @@ import { fmtStatFull, measurementStats, niceScaleLength } from "./geometry";
 import { postProcess } from "./imagefx";
 import { drawMeasurement, type RenderEnv } from "./render";
 import { imgReg } from "./store";
+import { t, useLocale } from "@/lib/i18n";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -44,7 +45,7 @@ export function buildRows(
         rows.push({
           Name: m.name,
           Typ: KIND_LABEL[m.kind],
-          Messgröße: "Text",
+          Messgröße: t("Text"),
           Wert: m.text ?? "",
           Einheit: "",
           Anzeige: m.text ?? "",
@@ -95,14 +96,18 @@ export function exportCSV(
     return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines: string[] = [];
-  lines.push(`# MaßWerk Messprotokoll;${new Date().toLocaleString("de-DE")}`);
+  lines.push(
+    `# MaßWerk Messprotokoll;${new Date().toLocaleString(
+      useLocale.getState().locale === "de" ? "de-DE" : "en-GB",
+    )}`,
+  );
   lines.push(`# Bild;${esc(imageName)}`);
   lines.push(
     calib
       ? `# Maßstab;1 px = ${(UNIT_TO_MM[calib.unit] / calib.pixelsPerUnit).toPrecision(6)} ${calib.unit}`
-      : "# Maßstab;nicht kalibriert (Pixelwerte)",
+      : `# ${t("Maßstab")};${t("nicht kalibriert (Pixelwerte)")}`,
   );
-  lines.push("Name;Typ;Messgröße;Wert;Einheit");
+  lines.push([t("Name"), t("Typ"), t("Messgröße"), t("Wert"), t("Einheit")].join(";"));
   for (const r of rows) {
     const wert =
       typeof r.Wert === "number" ? String(r.Wert).replace(".", ",") : r.Wert;
@@ -123,24 +128,24 @@ export async function exportXLSX(
 ) {
   const XLSX = await import("xlsx");
   const rows = buildRows(measurements, calib).map((r) => ({
-    Name: r.Name,
-    Typ: r.Typ,
-    Messgröße: r.Messgröße,
-    Wert: r.Wert,
-    Einheit: r.Einheit,
+    [t("Name")]: r.Name,
+    [t("Typ")]: r.Typ,
+    [t("Messgröße")]: r.Messgröße,
+    [t("Wert")]: r.Wert,
+    [t("Einheit")]: r.Einheit,
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   ws["!cols"] = [{ wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 8 }];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Messwerte");
+  XLSX.utils.book_append_sheet(wb, ws, t("Messwerte"));
   const meta = [
     ["MaßWerk Messprotokoll", new Date().toLocaleString("de-DE")],
     ["Bild", imageName],
     [
-      "Maßstab",
+      t("Maßstab"),
       calib
         ? `1 px = ${(UNIT_TO_MM[calib.unit] / calib.pixelsPerUnit).toPrecision(6)} ${calib.unit}`
-        : "nicht kalibriert (Pixelwerte)",
+        : t("nicht kalibriert (Pixelwerte)"),
     ],
   ];
   const wsMeta = XLSX.utils.aoa_to_sheet(meta);

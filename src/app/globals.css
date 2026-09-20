@@ -64,9 +64,9 @@
   --mw-hover-strong: light-dark(rgba(0, 0, 0, 0.07), rgba(255, 255, 255, 0.1));
 
   --mw-text: light-dark(#1c1c1e, #f4f4f5);
-  --mw-text-dim: light-dark(rgba(0, 0, 0, 0.62), rgba(255, 255, 255, 0.55));
-  --mw-text-faint: light-dark(rgba(0, 0, 0, 0.42), rgba(255, 255, 255, 0.4));
-  --mw-text-ghost: light-dark(rgba(0, 0, 0, 0.28), rgba(255, 255, 255, 0.3));
+  --mw-text-dim: light-dark(rgba(0, 0, 0, 0.72), rgba(255, 255, 255, 0.62));
+  --mw-text-faint: light-dark(rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.5));
+  --mw-text-ghost: light-dark(rgba(0, 0, 0, 0.55), rgba(255, 255, 255, 0.46));
 
   --mw-accent: #3b6ded;
   --mw-accent-strong: light-dark(#2f5bd0, #4578f0);
@@ -256,5 +256,38 @@ select option {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Touch & Stift: größere Ziele, wenn der Zeiger grob ist ───────────────
+   Apple HIG nennt 44 px, Material 48 dp – wir nehmen 40 px Minimum für
+   jede Schaltfläche und verdoppeln die Greifhöhe der Regler, ohne das
+   Layout für Maus- und Stift-Nutzer zu verändern. */
+@media (pointer: coarse) {
+  button:not(.mw-keep-size) {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .mw-range {
+    height: 32px;
+  }
+  .mw-range::-webkit-slider-runnable-track {
+    height: 5px;
+  }
+  .mw-range::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -8.5px;
+  }
+  .mw-range::-moz-range-track {
+    height: 5px;
+  }
+  .mw-range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+  .mw-check {
+    width: 20px;
+    height: 20px;
   }
 }

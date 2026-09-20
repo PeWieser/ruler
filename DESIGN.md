@@ -8,10 +8,9 @@
 > (das *Warum* konkreter Eingriffe); bei Widerspruch gewinnt die Grundsatz-Datei.
 >
 > Status: **Phase 1 (Ausrichtung) und Phase 2 (Design-Pass) sind umgesetzt,**
-> dazu P1 aus Phase 3 vorgezogen (Kürzel-Überlagerung, siehe 1.9) und die
-> Kritikrunde mit Modus-Fallen-Behebung, transparenter Ausrichtung und
-> greifbaren Anmerkungen (siehe 1.10).
-> Der Rest von Phase 3 ist bewusster Rückstand – begründet, priorisiert, nicht vergessen.
+> dazu P1 (Kürzel-Übersicht, 1.9), die Kritikrunde (1.10), P2 GPU-Pipeline
+> (1.11) sowie P4 Touch (1.12), P5 i18n (1.13) und P6 Barrierefreiheit (1.14).
+> Verbleiben bewusst: P3 Dokument-Modell und P7 Analyse-Feinschliff.
 
 ---
 
@@ -246,20 +245,58 @@ Maßnahme. Die daraus abgeleiteten **dauerhaften Regeln** stehen in
 Objektivkorrektur laufen jetzt latenzfrei über einen einzigen WebGL-Kontext;
 die CPU-Kette bleibt ehrlicher Rückfall für Systeme ohne WebGL.
 
+### 1.12 Touch & Stift (P4)
+
+- **Pinch-Zoom + Zwei-Finger-Pan** in CanvasStage: Zeiger-Map, inkrementelle
+  Geste pro Move (ruhig unabhängig von der absoluten Spreizung); die zweite
+  Fingerkuppe bricht eine laufende Einzelaktion ab und annulliert einen frisch
+  gesetzten Punkt binnen 700 ms (kein Streupunkt beim Reinzoomen).
+- **Größere Trefferflächen:** Hit-Toleranz 16 statt 9 Bildpx bei grobem Zeiger;
+  `@media (pointer: coarse)` hebt Schaltflächen auf 40 px Minimum und
+  verdoppelt Greifhöhe/Thumb der Regler – Maus- und Stift-Layout bleiben
+  unangetastet.
+
+### 1.13 Lokalisierung (P5)
+
+- **Gettext-Prinzip:** deutscher Quelltext ist der Schlüssel (`t("Distanz")`),
+  Übersetzungen leben in `src/lib/i18n/en.ts`; fehlt ein Eintrag, fällt er
+  höflich auf Deutsch zurück – nie nackte Keys im UI.
+- `useT()` für Komponenten (re-rendert bei Sprachwechsel), `t()` für Code
+  außerhalb von React (Store-Banner, Export) – beide lesen die Locale zur
+  Aufrufzeit. Locale persistiert in `localStorage`, `<html lang>` folgt.
+- **Sprachschalter** in der Kopfleiste (beide Varianten); migriert sind alle
+  Oberflächen: Leisten, Panel, Überlagerungen, Bühne, Banner, Status-Hints,
+  Live-Region sowie CSV/XLSX-Köpfe und Messgrößen-Labels.
+
+### 1.14 Barrierefreiheit vertiefen (P6)
+
+- **Fokus:** die Mess-Bühne ist eigener Tab-Stopp (`role="application"`,
+  benannt); globaler `:focus-visible`-Ring existiert bereits und gilt jetzt
+  auch dort (früher `outline-none`).
+- **ARIA-Live-Region** in der Statusleiste meldet Auswahl und Zählergebnis
+  (`polite`, nur bei echtem Wechsel – kein Spam beim Punkteziehen).
+- **Kontrast:** `--mw-text-dim/-faint/-ghost` neu abgemischt gegen die
+  Surface-Töne – Light wie Dark jetzt ≥ 4,5:1 für Normaltext
+  (ghost light zuvor ≈ 2,0:1, faint dark ≈ 3,8:1). Rechnung:
+  Light ghost rgba(0,0,0,0.55) → 4,76:1; faint 0.60 → 5,74:1; dim 0.72 → 9,2:1;
+  Dark ghost 0.46 → 4,65:1; faint 0.50 → 5,19:1; dim 0.62 → 7,5:1.
+
+---
+
+## 3 · Rückstand (Phase 3) – priorisiert
+
 **P3 · Dokument-Modell.** „Dokument öffnen/speichern" (.masswerk-Datei) statt
 nur LocalStorage-Sitzung; mehrere Bilder in Tabs. Ausrichtung/Entzerrung sind
 dafür bereits als reproduzierbare Transformationskette modelliert.
 
-**P4 · Touch & Stift.** Zeiger-Events sind vorbereitet; Gesten (Pinch-Zoom,
-Zwei-Finger-Pan) und größere Trefferflächen für Tablets fehlen.
+**P4 · Touch & Stift – ERLEDIGT** (siehe 1.12). Pinch-Zoom, Zwei-Finger-Pan,
+größere Trefferflächen; Geste annulliert frisch gesetzte Streupunkte.
 
-**P5 · Lokalisierung.** Deutsch ist gesetzt, Struktur für i18n fehlt.
-Alle Kopftexte sind bereits kurz genug, um sie sauber zu übersetzen.
+**P5 · Lokalisierung – ERLEDIGT** (siehe 1.13). Gettext-Prinzip, DE/EN
+vollständig migriert, Sprachschalter in der Kopfleiste.
 
-**P6 · Barrierefreiheit vertiefen.** Fokus-Reihenfolge im Canvas,
-ARIA-Live-Region für Messwerte, Kontrast-Check der Ghost-Töne im Light-Mode.
-(Banner-Live-Region und Dialog-Semantik der Kürzel-Übersicht sind gesetzt,
-siehe 1.9.)
+**P6 · Barrierefreiheit – ERLEDIGT** (siehe 1.14). Canvas-Fokus, Live-Region
+für Messwerte, Kontrast-Token in Light und Dark auf AA.
 
 **P7 · Analyse-Feinschliff.** ROI nach dem Aufziehen verschiebbar/
 skalierbar machen; Ergebnisliste mit Einzelobjekt-Flächen statt nur Summe.

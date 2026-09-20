@@ -4,6 +4,7 @@
 import type { ComponentType } from "react";
 import { useEditor } from "@/lib/measure/store";
 import type { ToolId } from "@/lib/measure/types";
+import { useT } from "@/lib/i18n";
 import {
   AngleIcon,
   AnnotateIcon,
@@ -132,6 +133,7 @@ const GROUPS: ToolDef[][] = [
 ];
 
 export default function Toolbar() {
+  const tr = useT();
   const tool = useEditor((s) => s.tool);
   const setTool = useEditor((s) => s.setTool);
   const hasImage = useEditor((s) => s.image !== null);
@@ -141,27 +143,27 @@ export default function Toolbar() {
       {GROUPS.map((group, gi) => (
         <div key={gi} className="flex flex-col items-center gap-0.5">
           {gi > 0 && <div className="my-1.5 h-px w-5 bg-[var(--mw-border)]" />}
-          {group.map((t) => {
-            const active = tool === t.id;
+          {group.map((d) => {
+            const active = tool === d.id;
             return (
               <button
-                key={t.id}
+                key={d.id}
                 type="button"
-                disabled={!hasImage && t.id !== "select"}
-                onClick={() => setTool(t.id)}
-                data-tip={t.label}
-                data-desc={t.desc}
-                data-key={t.key}
+                disabled={!hasImage && d.id !== "select"}
+                onClick={() => setTool(d.id)}
+                data-tip={tr(d.label)}
+                data-desc={tr(d.desc)}
+                data-key={d.key}
                 data-side="right"
                 className={`group relative flex h-9 w-9 items-center justify-center rounded-[9px] transition-colors duration-150 disabled:opacity-25 ${
                   active
                     ? "bg-[var(--mw-accent-bg-strong)] text-[var(--mw-accent-text)]"
                     : "text-[var(--mw-text-dim)] hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
                 }`}
-                aria-label={t.label}
+                aria-label={tr(d.label)}
                 aria-pressed={active}
               >
-                <t.icon size={18} />
+                <d.icon size={18} />
                 {active && (
                   <span className="absolute left-[-7px] h-4.5 w-[2.5px] rounded-full bg-[var(--mw-accent)]" />
                 )}

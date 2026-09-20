@@ -2,6 +2,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useT } from "@/lib/i18n";
 
 /** App-Icon im macOS-Stil: das Lineal-Motiv der Wortmarke, groß gedacht. */
 function AppTile() {
@@ -57,6 +58,7 @@ export default function EmptyState({
   onOpenImage: (file: File) => void;
   onSample: () => void;
 }) {
+  const tr = useT();
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -65,10 +67,10 @@ export default function EmptyState({
         <AppTile />
 
         <h1 className="text-[17px] font-semibold tracking-[-0.015em] text-white/90">
-          Präzise vermessen
+          {tr("Präzise vermessen")}
         </h1>
         <p className="mt-1.5 text-[13px] leading-relaxed text-white/40">
-          Bild öffnen, Maßstab setzen, in echten Einheiten messen.
+          {tr("Bild öffnen, Maßstab setzen, in echten Einheiten messen.")}
         </p>
 
         <button
@@ -77,10 +79,10 @@ export default function EmptyState({
           className="mt-6 rounded-[10px] bg-[#3B6DED] px-4.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#4578F0] active:bg-[#2F5BD0]"
           style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(59,109,237,0.28)" }}
         >
-          Bild öffnen
+          {tr("Bild öffnen")}
         </button>
         <p className="mt-3 text-[11.5px] text-white/30">
-          Datei hierher ziehen oder mit Strg+V einfügen
+          {tr("Datei hierher ziehen oder mit Strg+V einfügen")}
         </p>
 
         <button
@@ -88,11 +90,11 @@ export default function EmptyState({
           onClick={onSample}
           className="mt-6 rounded-lg px-3 py-1.5 text-[12.5px] text-[#8AB4FF] transition-colors hover:bg-white/[0.06]"
         >
-          Beispielbild laden
+          {tr("Beispielbild laden")}
         </button>
 
         <p className="mt-10 text-[11px] text-white/22">
-          Alle Daten bleiben auf diesem Gerät.
+          {tr("Alle Daten bleiben auf diesem Gerät.")}
         </p>
         <input
           ref={fileRef}

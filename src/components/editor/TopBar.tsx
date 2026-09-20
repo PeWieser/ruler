@@ -10,6 +10,7 @@ import {
   FileText,
   FolderOpen,
   ImageDown,
+  Languages,
   Loader2,
   Magnet,
   Maximize,
@@ -22,6 +23,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { useEditor } from "@/lib/measure/store";
+import { useLocale, useT } from "@/lib/i18n";
 import { useView } from "./CanvasStage";
 import { exportAnnotatedPNG, exportCSV, exportXLSX } from "@/lib/measure/export";
 import { fmtNumber } from "@/lib/measure/geometry";
@@ -52,6 +54,9 @@ export default function TopBar({
   onOpenImage: (file: File) => void;
 }) {
   const st = useEditor();
+  const tr = useT();
+  const locale = useLocale((s) => s.locale);
+  const setLocale = useLocale((s) => s.setLocale);
   const scale = useView((s) => s.scale);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scaleOpen, setScaleOpen] = useState(false);
@@ -132,7 +137,16 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Tastaturkürzel"
+          data-tip={tr("Sprache wechseln")}
+          data-desc={locale === "de" ? "English" : "Deutsch"}
+          onClick={() => setLocale(locale === "de" ? "en" : "de")}
+        >
+          <Languages size={16} />
+        </button>
+        <button
+          type="button"
+          className={iconBtn}
+          data-tip={tr("Tastaturkürzel")}
           data-key="?"
           onClick={() => st.setHelpOpen(true)}
         >
@@ -144,7 +158,7 @@ export default function TopBar({
           className="flex h-8 items-center gap-2 rounded-lg bg-[var(--mw-accent)] px-3.5 text-[12.5px] font-medium text-white transition-all duration-150 hover:bg-[var(--mw-accent-strong)] active:scale-[0.98]"
         >
           <FolderOpen size={15} />
-          Bild öffnen
+          {tr("Bild öffnen")}
         </button>
         <input
           ref={fileRef}
@@ -170,8 +184,8 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Bild öffnen"
-          data-desc="JPG · PNG · WebP · BMP · TIFF"
+          data-tip={tr("Bild öffnen")}
+          data-desc={tr("JPG · PNG · WebP · BMP · TIFF")}
           onClick={() => fileRef.current?.click()}
         >
           <FolderOpen size={16} />
@@ -210,12 +224,12 @@ export default function TopBar({
                 ? "border-[var(--mw-border-strong)] bg-[var(--mw-hover)] text-[var(--mw-text-dim)] hover:bg-[var(--mw-hover-strong)]"
                 : "border-[var(--mw-accent-border)] bg-[var(--mw-accent-bg)] text-[var(--mw-accent-text)] hover:bg-[var(--mw-accent-bg-strong)]"
             }`}
-            data-tip={st.calibration ? "Maßstab" : "Maßstab setzen"}
-            data-desc={
+            data-tip={tr(st.calibration ? "Maßstab" : "Maßstab setzen")}
+            data-desc={tr(
               st.calibration
                 ? "Kalibrierung ansehen und anpassen"
-                : "Referenzstrecke ziehen, Länge eingeben"
-            }
+                : "Referenzstrecke ziehen, Länge eingeben",
+            )}
             data-key={st.calibration ? "" : "K"}
           >
             {calibPulse && (
@@ -228,7 +242,7 @@ export default function TopBar({
             {st.calibration ? (
               <span className="relative font-tabular">{ppuText}</span>
             ) : (
-              <span className="relative">Maßstab setzen</span>
+              <span className="relative">{tr("Maßstab setzen")}</span>
             )}
           </button>
         )}
@@ -237,17 +251,17 @@ export default function TopBar({
             className="animate-pop-in absolute left-1/2 top-10 z-30 w-72 -translate-x-1/2 origin-top rounded-xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] p-3.5"
             style={{ boxShadow: "0 16px 40px var(--mw-shadow)" }}
             role="dialog"
-            aria-label="Maßstab"
+            aria-label={tr("Maßstab")}
           >
             {!st.calibration ? (
               <>
                 <div className="text-[13px] font-medium text-[var(--mw-text)]">
-                  Noch kein Maßstab
+                  {tr("Noch kein Maßstab")}
                 </div>
                 <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--mw-text-faint)]">
-                  Messwerte sind gerade in Pixeln. Ziehen Sie eine Referenzstrecke
-                  entlang einer bekannten Länge und tragen Sie ihren realen Wert
-                  ein – danach misst alles in der gewählten Einheit.
+                  {tr(
+                    "Messwerte sind gerade in Pixeln. Ziehen Sie eine Referenzstrecke entlang einer bekannten Länge und tragen Sie ihren realen Wert ein – danach misst alles in der gewählten Einheit.",
+                  )}
                 </p>
                 <div className="mt-2.5 flex items-center gap-1.5">
                   <button
@@ -258,17 +272,17 @@ export default function TopBar({
                     }}
                     className="rounded-lg bg-[var(--mw-accent)] px-2.5 py-1.5 text-[11.5px] font-medium text-white transition-colors hover:bg-[var(--mw-accent-strong)]"
                   >
-                    Jetzt kalibrieren
+                    {tr("Jetzt kalibrieren")}
                   </button>
                   <span className="ml-auto font-tabular text-[10.5px] text-[var(--mw-text-ghost)]">
-                    Taste K
+                    {tr("Taste K")}
                   </span>
                 </div>
               </>
             ) : (
               <>
                 <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--mw-text-ghost)]">
-                  Maßstab
+                  {tr("Maßstab")}
                 </div>
                 <div className="mt-0.5 font-tabular text-[17px] font-medium text-[var(--mw-text)]">
                   {fmtNumber(st.calibration.pixelsPerUnit)}
@@ -285,7 +299,7 @@ export default function TopBar({
                     }}
                     className="rounded-lg border border-[var(--mw-border-strong)] bg-[var(--mw-surface-3)] px-2.5 py-1.5 text-[11.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
                   >
-                    Neu kalibrieren
+                    {tr("Neu kalibrieren")}
                   </button>
                   <button
                     type="button"
@@ -295,7 +309,7 @@ export default function TopBar({
                     }}
                     className="rounded-lg border border-[var(--mw-border-strong)] bg-[var(--mw-surface-3)] px-2.5 py-1.5 text-[11.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
                   >
-                    Im Panel anpassen
+                    {tr("Im Panel anpassen")}
                   </button>
                   <button
                     type="button"
@@ -305,7 +319,7 @@ export default function TopBar({
                     }}
                     className="ml-auto rounded-lg px-2 py-1.5 text-[11.5px] text-[var(--mw-text-ghost)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text-dim)]"
                   >
-                    Entfernen
+                    {tr("Entfernen")}
                   </button>
                 </div>
               </>
@@ -319,8 +333,8 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Rückgängig"
-          data-key="Strg+Z"
+          data-tip={tr("Rückgängig")}
+          data-key={tr("Strg+Z")}
           disabled={!canUndo}
           onClick={st.undo}
         >
@@ -329,8 +343,8 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Wiederholen"
-          data-key="Strg+Y"
+          data-tip={tr("Wiederholen")}
+          data-key={tr("Strg+Y")}
           disabled={!canRedo}
           onClick={st.redo}
         >
@@ -342,7 +356,7 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Verkleinern"
+          data-tip={tr("Verkleinern")}
           data-key="−"
           disabled={!hasImage}
           onClick={() => st.fireViewCmd("out")}
@@ -351,8 +365,8 @@ export default function TopBar({
         </button>
         <button
           type="button"
-          data-tip="100 % anzeigen"
-          data-desc="Ein Bildpixel entspricht einem Bildschirmpixel"
+          data-tip={tr("100 % anzeigen")}
+          data-desc={tr("Ein Bildpixel entspricht einem Bildschirmpixel")}
           data-key="1"
           disabled={!hasImage}
           onClick={() => st.fireViewCmd("100")}
@@ -363,7 +377,7 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Vergrößern"
+          data-tip={tr("Vergrößern")}
           data-key="+"
           disabled={!hasImage}
           onClick={() => st.fireViewCmd("in")}
@@ -373,8 +387,8 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Einpassen"
-          data-desc="Ganzes Bild anzeigen"
+          data-tip={tr("Einpassen")}
+          data-desc={tr("Ganzes Bild anzeigen")}
           data-key="0"
           disabled={!hasImage}
           onClick={() => st.fireViewCmd("fit")}
@@ -387,8 +401,8 @@ export default function TopBar({
         <button
           type="button"
           className={toggleBtn(st.snap)}
-          data-tip="Kantenfang"
-          data-desc="Punkte rasten an Kanten ein · Shift: frei"
+          data-tip={tr("Kantenfang")}
+          data-desc={tr("Punkte rasten an Kanten ein · Shift: frei")}
           data-key="S"
           disabled={!hasImage}
           onClick={() => st.setSnap(!st.snap)}
@@ -398,8 +412,8 @@ export default function TopBar({
         <button
           type="button"
           className={toggleBtn(st.scaleBar)}
-          data-tip="Maßstabsbalken"
-          data-desc="Im Bild und im Export anzeigen"
+          data-tip={tr("Maßstabsbalken")}
+          data-desc={tr("Im Bild und im Export anzeigen")}
           disabled={!hasImage}
           onClick={() => st.setScaleBar(!st.scaleBar)}
         >
@@ -416,8 +430,8 @@ export default function TopBar({
             type="button"
             disabled={!hasImage}
             onClick={() => setMenuOpen((v) => !v)}
-            data-tip="Exportieren"
-            data-desc="PNG mit Messungen · CSV · Excel"
+            data-tip={tr("Exportieren")}
+            data-desc={tr("PNG mit Messungen · CSV · Excel")}
             className={`flex h-8 items-center gap-2 rounded-lg px-3 text-[12.5px] font-medium text-white transition-all duration-150 active:scale-[0.98] disabled:opacity-30 ${
               pngDone ? "bg-[#2FA84A]" : "bg-[var(--mw-accent)] hover:bg-[var(--mw-accent-strong)]"
             }`}
@@ -429,7 +443,7 @@ export default function TopBar({
             ) : (
               <Download size={15} />
             )}
-            {pngDone ? "Gespeichert" : pngBusy > 0 ? `${Math.round(pngBusy * 100)} %` : "Export"}
+            {pngDone ? tr("Gespeichert") : pngBusy > 0 ? `${Math.round(pngBusy * 100)} %` : tr("Export")}
           </button>
           {menuOpen && (
             <div className="animate-pop-in absolute right-0 top-10 z-30 w-60 origin-top-right overflow-hidden rounded-xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] p-1 shadow-xl" style={{ boxShadow: "0 16px 40px var(--mw-shadow)" }}>
@@ -442,7 +456,7 @@ export default function TopBar({
                 }}
               >
                 <ImageDown size={15.5} className="text-[var(--mw-text-faint)]" />
-                <span className="flex-1">Bild mit Messungen</span>
+                <span className="flex-1">{tr("Bild mit Messungen")}</span>
                 <span className="text-[11px] text-[var(--mw-text-ghost)]">PNG</span>
               </button>
               <button
@@ -454,7 +468,7 @@ export default function TopBar({
                 }}
               >
                 <FileText size={15.5} className="text-[var(--mw-text-faint)]" />
-                <span className="flex-1">Messwerttabelle</span>
+                <span className="flex-1">{tr("Messwerttabelle")}</span>
                 <span className="text-[11px] text-[var(--mw-text-ghost)]">CSV</span>
               </button>
               <button
@@ -466,7 +480,7 @@ export default function TopBar({
                 }}
               >
                 <FileSpreadsheet size={15.5} className="text-[var(--mw-text-faint)]" />
-                <span className="flex-1">Messwerttabelle</span>
+                <span className="flex-1">{tr("Messwerttabelle")}</span>
                 <span className="text-[11px] text-[var(--mw-text-ghost)]">Excel</span>
               </button>
             </div>
@@ -476,7 +490,16 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Tastaturkürzel"
+          data-tip={tr("Sprache wechseln")}
+          data-desc={locale === "de" ? "English" : "Deutsch"}
+          onClick={() => setLocale(locale === "de" ? "en" : "de")}
+        >
+          <Languages size={16} />
+        </button>
+        <button
+          type="button"
+          className={iconBtn}
+          data-tip={tr("Tastaturkürzel")}
           data-key="?"
           onClick={() => st.setHelpOpen(true)}
         >
@@ -485,8 +508,8 @@ export default function TopBar({
         <button
           type="button"
           className={iconBtn}
-          data-tip="Seitenleiste"
-          data-desc="Panel ein- oder ausblenden"
+          data-tip={tr("Seitenleiste")}
+          data-desc={tr("Panel ein- oder ausblenden")}
           onClick={() => st.setPanelOpen(!st.panelOpen)}
         >
           {st.panelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}

@@ -40,6 +40,7 @@ import {
   type Orientation,
 } from "./orientation";
 import { toStorageDataUrl, type LoadedImage } from "./loadImage";
+import { t } from "@/lib/i18n";
 
 // ── Nicht-reaktive Bild-Registry (Canvas-Quellen & Capture) ──────────────────
 export interface ImageRegistry {
@@ -756,7 +757,7 @@ export const useEditor = create<EditorState>()((set, get) => {
         pendingCalib: null,
         tool: firstCalibration ? "line" : s.tool,
         banner: firstCalibration
-          ? "Maßstab gesetzt – Sie können jetzt messen."
+          ? t("Maßstab gesetzt – Sie können jetzt messen.")
           : null,
       });
       persist();
@@ -992,7 +993,7 @@ export const useEditor = create<EditorState>()((set, get) => {
       // Objektivkorrektur zuerst anwenden (falls aktiv), dann perspektivisch entzerren
       const warped = warpPerspective(lensSource, H, w, h);
       if (!warped) {
-        set({ rectify: null, banner: "Entzerrung fehlgeschlagen (WebGL nicht verfügbar)." });
+        set({ rectify: null, banner: t("Entzerrung fehlgeschlagen (WebGL nicht verfügbar).") });
         return;
       }
       rectifyBackup = {
@@ -1025,7 +1026,7 @@ export const useEditor = create<EditorState>()((set, get) => {
         imgVersion: s.imgVersion + 1,
         past: [],
         future: [],
-        banner: "Entzerrt – bitte Maßstab prüfen.",
+        banner: t("Entzerrt – bitte Maßstab prüfen."),
       });
       persist();
     },

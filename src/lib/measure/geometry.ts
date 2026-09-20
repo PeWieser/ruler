@@ -1,4 +1,5 @@
 // ── MaßWerk · Geometrie, Statistik & Formatierung ───────────────────────────
+import { t } from "@/lib/i18n";
 import type { Calibration, Measurement, Pt, Rect } from "./types";
 
 export const clamp = (v: number, lo: number, hi: number) =>
@@ -478,44 +479,44 @@ export function measurementStats(m: Measurement): Stat[] {
   switch (m.kind) {
     case "line":
       return p.length >= 2
-        ? [{ label: "Länge", kind: "length", raw: dist(p[0], p[1]) }]
+        ? [{ label: t("Länge"), kind: "length", raw: dist(p[0], p[1]) }]
         : [];
     case "polyline":
       return p.length >= 2
-        ? [{ label: "Länge", kind: "length", raw: pathLength(p) }]
+        ? [{ label: t("Länge"), kind: "length", raw: pathLength(p) }]
         : [];
     case "lot": {
       if (p.length < 3) return [];
       const foot = closestPointOnLine(p[2], p[0], p[1]);
-      return [{ label: "Abstand", kind: "length", raw: dist(p[2], foot) }];
+      return [{ label: t("Abstand"), kind: "length", raw: dist(p[2], foot) }];
     }
     case "angle":
       return p.length >= 3
-        ? [{ label: "Winkel", kind: "angle", raw: angleAt(p[0], p[1], p[2]) }]
+        ? [{ label: t("Winkel"), kind: "angle", raw: angleAt(p[0], p[1], p[2]) }]
         : [];
     case "crossangle": {
       if (p.length < 4) return [];
       const acute = angleBetweenLines(p[0], p[1], p[2], p[3]);
       return [
-        { label: "Schnittwinkel", kind: "angle", raw: acute },
-        { label: "Gegenwinkel", kind: "angle", raw: 180 - acute },
+        { label: t("Schnittwinkel"), kind: "angle", raw: acute },
+        { label: t("Gegenwinkel"), kind: "angle", raw: 180 - acute },
       ];
     }
     case "rect": {
       if (p.length < 2) return [];
       const r = rectFrom2(p[0], p[1]);
       return [
-        { label: "Fläche", kind: "area", raw: r.w * r.h },
-        { label: "Umfang", kind: "length", raw: 2 * (r.w + r.h) },
-        { label: "Breite", kind: "length", raw: r.w },
-        { label: "Höhe", kind: "length", raw: r.h },
+        { label: t("Fläche"), kind: "area", raw: r.w * r.h },
+        { label: t("Umfang"), kind: "length", raw: 2 * (r.w + r.h) },
+        { label: t("Breite"), kind: "length", raw: r.w },
+        { label: t("Höhe"), kind: "length", raw: r.h },
       ];
     }
     case "ellipse": {
       if (p.length < 2) return [];
       const e = ellipseFromBBox(p[0], p[1]);
       return [
-        { label: "Fläche", kind: "area", raw: Math.PI * e.rx * e.ry },
+        { label: t("Fläche"), kind: "area", raw: Math.PI * e.rx * e.ry },
         { label: "Umfang ≈", kind: "length", raw: ellipseCircumference(e.rx, e.ry) },
         { label: "Achse a", kind: "length", raw: e.rx * 2 },
         { label: "Achse b", kind: "length", raw: e.ry * 2 },
@@ -526,17 +527,17 @@ export function measurementStats(m: Measurement): Stat[] {
       const c = circleFrom3Points(p[0], p[1], p[2]);
       if (!c) return [];
       return [
-        { label: "Radius", kind: "length", raw: c.r },
+        { label: t("Radius"), kind: "length", raw: c.r },
         { label: "Durchmesser", kind: "length", raw: 2 * c.r },
-        { label: "Fläche", kind: "area", raw: Math.PI * c.r * c.r },
-        { label: "Umfang", kind: "length", raw: 2 * Math.PI * c.r },
+        { label: t("Fläche"), kind: "area", raw: Math.PI * c.r * c.r },
+        { label: t("Umfang"), kind: "length", raw: 2 * Math.PI * c.r },
       ];
     }
     case "polygon":
       return p.length >= 3
         ? [
-            { label: "Fläche", kind: "area", raw: polygonArea(p) },
-            { label: "Umfang", kind: "length", raw: pathLength(p, true) },
+            { label: t("Fläche"), kind: "area", raw: polygonArea(p) },
+            { label: t("Umfang"), kind: "length", raw: pathLength(p, true) },
           ]
         : [];
     case "count":

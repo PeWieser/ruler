@@ -65,7 +65,10 @@ single persistent WebGL context (two draw calls, one texture upload per
 image); a CPU chain remains as honest fallback where WebGL is unavailable.
 The analysis readback buffer is built lazily, only while analysis is active.
 All geometry lives in image coordinates and is transformed exactly whenever
-the image is. Fonts (Geist / Geist Mono) are self-hosted.
+the image is. The UI is localized (German source, English dictionary,
+gettext-style keys, switcher in the top bar); touch devices get pinch-zoom,
+two-finger pan and larger hit targets. Fonts (Geist / Geist Mono) are
+self-hosted.
 
 - `src/lib/measure/` – geometry, image processing, rendering, export, store
 - `src/components/editor/` – stage, bars, panel, tooltips, shortcut overlay

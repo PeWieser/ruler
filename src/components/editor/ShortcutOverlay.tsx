@@ -6,6 +6,7 @@
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { useEditor } from "@/lib/measure/store";
+import { useT } from "@/lib/i18n";
 
 interface Row {
   keys: string[];
@@ -71,19 +72,20 @@ const EDIT: Group = {
 };
 
 function GroupBlock({ group }: { group: Group }) {
+  const tr = useT();
   return (
     <section>
       <div className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--mw-text-ghost)]">
-        {group.title}
+        {tr(group.title)}
       </div>
       <div className="space-y-0.5">
         {group.rows.map((r) => (
           <div key={r.label} className="flex items-center justify-between gap-6 py-[3px]">
-            <span className="text-[12.5px] text-[var(--mw-text-dim)]">{r.label}</span>
+            <span className="text-[12.5px] text-[var(--mw-text-dim)]">{tr(r.label)}</span>
             <span className="flex shrink-0 items-center gap-1">
               {r.keys.map((k) => (
                 <kbd key={k} className="mw-kbd">
-                  {k}
+                  {tr(k)}
                 </kbd>
               ))}
             </span>
@@ -95,6 +97,7 @@ function GroupBlock({ group }: { group: Group }) {
 }
 
 export default function ShortcutOverlay() {
+  const tr = useT();
   const open = useEditor((s) => s.helpOpen);
   const setOpen = useEditor((s) => s.setHelpOpen);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -115,18 +118,18 @@ export default function ShortcutOverlay() {
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label="Tastaturkürzel"
+        aria-label={tr("Tastaturkürzel")}
         onPointerDown={(e) => e.stopPropagation()}
         className="animate-pop-in max-h-[84vh] w-[min(620px,94vw)] overflow-y-auto rounded-2xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] p-5 outline-none"
         style={{ boxShadow: "0 24px 64px var(--mw-shadow)" }}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--mw-text)]">
-            Tastaturkürzel
+            {tr("Tastaturkürzel")}
           </h2>
           <button
             type="button"
-            aria-label="Schließen"
+            aria-label={tr("Schließen")}
             onClick={() => setOpen(false)}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
           >

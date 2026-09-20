@@ -12,9 +12,12 @@ import EmptyState from "@/components/editor/EmptyState";
 import TooltipLayer from "@/components/editor/TooltipLayer";
 import ShortcutOverlay from "@/components/editor/ShortcutOverlay";
 import { useEditor } from "@/lib/measure/store";
+import { useLocale, useT } from "@/lib/i18n";
 import { imageFileFromDataTransfer, loadImageFile } from "@/lib/measure/loadImage";
 
 export default function Page() {
+  const tr = useT();
+  const locale = useLocale((s) => s.locale);
   const image = useEditor((s) => s.image);
   const banner = useEditor((s) => s.banner);
   const setBanner = useEditor((s) => s.setBanner);
@@ -90,6 +93,11 @@ export default function Page() {
     };
   }, [openFile]);
 
+  // <html lang> folgt der Locale
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   // Banner blendet sich selbst aus
   useEffect(() => {
     if (!banner) return;
@@ -111,7 +119,7 @@ export default function Page() {
             <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
               <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-[#17171C] px-4 py-3 text-[13px] text-white/80">
                 <Loader2 size={16} className="animate-spin text-[#8AB4FF]" />
-                Bild wird geladen …
+                {tr("Bild wird geladen …")}
               </div>
             </div>
           )}
@@ -129,9 +137,9 @@ export default function Page() {
               <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
-            <div className="text-[15px] font-medium tracking-[-0.01em] text-white/90">Bild loslassen</div>
+            <div className="text-[15px] font-medium tracking-[-0.01em] text-white/90">{tr("Bild loslassen")}</div>
             <div className="mt-1 text-[12px] text-white/40">
-              {image ? "Ersetzt das aktuelle Bild" : "JPG · PNG · WebP · BMP · GIF · TIFF"}
+              {tr(image ? "Ersetzt das aktuelle Bild" : "JPG · PNG · WebP · BMP · GIF · TIFF")}
             </div>
           </div>
         </div>

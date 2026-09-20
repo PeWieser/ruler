@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEditor, type PanelTab } from "@/lib/measure/store";
+import { useT } from "@/lib/i18n";
 import { orientationActive } from "@/lib/measure/orientation";
 import {
   fmtNumber,
@@ -118,6 +119,7 @@ function ColorDots({
 // ── Tab: Messungen ───────────────────────────────────────────────────────────
 
 function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
+  const tr = useT();
   const selectedId = useEditor((s) => s.selectedId);
   const calibration = useEditor((s) => s.calibration);
   const select = useEditor((s) => s.select);
@@ -183,7 +185,7 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
       <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
-          aria-label={m.visible ? "Ausblenden" : "Einblenden"}
+          aria-label={tr(m.visible ? "Ausblenden" : "Einblenden")}
           onClick={(e) => {
             e.stopPropagation();
             setVisible(m.id, !m.visible);
@@ -194,7 +196,7 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
         </button>
         <button
           type="button"
-          aria-label="Löschen"
+          aria-label={tr("Löschen")}
           onClick={requestDelete}
           className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-danger-bg)] hover:text-[var(--mw-danger-text)] active:scale-90"
         >
@@ -207,6 +209,7 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
 
 function SelectedDetail({ m }: { m: Measurement }) {
   const st = useEditor();
+  const tr = useT();
   const stats = measurementStats(m);
   return (
     <div className="animate-pop-in mt-2 rounded-xl border border-[var(--mw-border)] bg-[var(--mw-surface-3)] p-3">
@@ -216,8 +219,8 @@ function SelectedDetail({ m }: { m: Measurement }) {
         </span>
         <button
           type="button"
-          aria-label={m.visible ? "Ausblenden" : "Einblenden"}
-          data-tip={m.visible ? "Ausblenden" : "Einblenden"}
+          aria-label={tr(m.visible ? "Ausblenden" : "Einblenden")}
+          data-tip={tr(m.visible ? "Ausblenden" : "Einblenden")}
           data-side="left"
           onClick={() => st.setVisible(m.id, !m.visible)}
           className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--mw-text-faint)] transition-colors hover:bg-[var(--mw-hover-strong)] hover:text-[var(--mw-text)] active:scale-95"
@@ -237,7 +240,7 @@ function SelectedDetail({ m }: { m: Measurement }) {
       ) : (
         (m.kind === "note" || m.kind === "arrow") && (
           <div className="mb-3 text-[12.5px] text-[var(--mw-text-dim)]">
-            {m.text ? `„${m.text}“` : "Kein Text – auf der Leinwand anklicken zum Bearbeiten."}
+            {m.text ? `„${m.text}“` : tr("Kein Text – auf der Leinwand anklicken zum Bearbeiten.")}
           </div>
         )
       )}
@@ -248,7 +251,7 @@ function SelectedDetail({ m }: { m: Measurement }) {
           onClick={() => st.remove(m.id)}
           className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-danger-bg)] hover:text-[var(--mw-danger-text)]"
         >
-          <Trash2 size={13} /> Löschen
+          <Trash2 size={13} /> {tr("Löschen")}
         </button>
       </div>
     </div>
@@ -257,6 +260,7 @@ function SelectedDetail({ m }: { m: Measurement }) {
 
 function MessTab() {
   const st = useEditor();
+  const tr = useT();
   const [confirmClear, setConfirmClear] = useState(false);
   const selected = st.measurements.find((m) => m.id === st.selectedId);
 
@@ -271,8 +275,8 @@ function MessTab() {
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[12px] text-[var(--mw-text-faint)]">
           {st.measurements.length === 0
-            ? "Noch keine Messungen"
-            : `${st.measurements.length} ${st.measurements.length === 1 ? "Messung" : "Messungen"}`}
+            ? tr("Noch keine Messungen")
+            : `${st.measurements.length} ${tr(st.measurements.length === 1 ? "Messung" : "Messungen")}`}
         </span>
         {st.measurements.length > 0 && (
           <button
@@ -289,7 +293,7 @@ function MessTab() {
                 : "text-[var(--mw-text-faint)] hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text-dim)]"
             }`}
           >
-            {confirmClear ? "Wirklich alle löschen?" : "Alle löschen"}
+            {confirmClear ? tr("Wirklich alle löschen?") : tr("Alle löschen")}
           </button>
         )}
       </div>
@@ -298,24 +302,24 @@ function MessTab() {
         <div className="rounded-xl border border-dashed border-[var(--mw-border-strong)] bg-[var(--mw-hover)] p-4 text-[12.5px] leading-relaxed text-[var(--mw-text-dim)]">
           {!st.calibration ? (
             <>
-              <p className="mb-1.5 text-[var(--mw-text)]">Maßstab setzen</p>
+              <p className="mb-1.5 text-[var(--mw-text)]">{tr("Maßstab setzen")}</p>
               <p className="mb-3">
-                Eine Strecke bekannter Länge ziehen – dann wird in echten Einheiten gemessen.
+                {tr("Eine Strecke bekannter Länge ziehen – dann wird in echten Einheiten gemessen.")}
               </p>
               <button
                 type="button"
                 onClick={() => st.setTool("calibrate")}
-                data-tip="Maßstab kalibrieren"
+                data-tip={tr("Maßstab kalibrieren")}
                 data-key="K"
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--mw-accent)] py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[var(--mw-accent-strong)] active:scale-[0.98]"
               >
-                Maßstab kalibrieren
+                {tr("Maßstab kalibrieren")}
               </button>
             </>
           ) : (
             <>
-              <p className="mb-1.5 text-[var(--mw-text)]">Bereit zum Messen</p>
-              <p>Werkzeug links wählen – die Messwerte erscheinen hier.</p>
+              <p className="mb-1.5 text-[var(--mw-text)]">{tr("Bereit zum Messen")}</p>
+              <p>{tr("Werkzeug links wählen – die Messwerte erscheinen hier.")}</p>
             </>
           )}
         </div>
@@ -336,6 +340,7 @@ function MessTab() {
 
 function KalibTab() {
   const st = useEditor();
+  const tr = useT();
   const [value, setValue] = useState("10");
   const [unit, setUnit] = useState<Unit>("cm");
   const [profileName, setProfileName] = useState("");
@@ -351,7 +356,7 @@ function KalibTab() {
       {pending ? (
         <div className="animate-pop-in rounded-xl border border-[var(--mw-accent-border)] bg-[var(--mw-accent-bg)] p-3">
           <div className="mb-2.5 flex items-center justify-between">
-            <span className="text-[12px] font-medium text-[var(--mw-accent-text)]">Referenzlänge</span>
+            <span className="text-[12px] font-medium text-[var(--mw-accent-text)]">{tr("Referenzlänge")}</span>
             <span className="font-tabular text-[12px] text-[var(--mw-text-dim)]">{fmtNumber(px)} px</span>
           </div>
           <div className="mb-2.5 flex gap-2">
@@ -365,7 +370,7 @@ function KalibTab() {
                 if (e.key === "Enter" && num > 0) st.commitCalibration(num, unit);
               }}
               className={`${inputCls} w-0 flex-1 font-tabular`}
-              placeholder="z. B. 10"
+              placeholder={tr("z. B. 10")}
             />
             <select
               value={unit}
@@ -396,13 +401,13 @@ function KalibTab() {
           className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--mw-accent-border)] bg-[var(--mw-accent-bg)] p-3 text-[12.5px] text-[var(--mw-accent-text)] transition-colors hover:bg-[var(--mw-accent-bg-strong)] active:scale-[0.99]"
         >
           <Plus size={15} />
-          {st.calibration ? "Neu kalibrieren …" : "Referenzstrecke im Bild ziehen …"}
+          {tr(st.calibration ? "Neu kalibrieren …" : "Referenzstrecke im Bild ziehen …")}
         </button>
       )}
 
       {st.calibration ? (
         <>
-          <SectionTitle>Aktiver Maßstab</SectionTitle>
+          <SectionTitle>{tr("Aktiver Maßstab")}</SectionTitle>
           <div className="rounded-xl border border-[var(--mw-border)] bg-[var(--mw-surface-3)] p-3">
             <div className="font-tabular text-[15px] text-[var(--mw-text)]">
               1 px = {fmtNumber(1 / st.calibration.pixelsPerUnit, 5)} {st.calibration.unit}
@@ -412,7 +417,7 @@ function KalibTab() {
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
-                <span className="text-[11.5px] text-[var(--mw-text-faint)]">Einheit</span>
+                <span className="text-[11.5px] text-[var(--mw-text-faint)]">{tr("Einheit")}</span>
                 <select
                   value={st.calibration.unit}
                   onChange={(e) => st.setCalibUnit(e.target.value as Unit)}
@@ -435,7 +440,7 @@ function KalibTab() {
             </div>
           </div>
 
-          <SectionTitle>Als Profil speichern</SectionTitle>
+          <SectionTitle>{tr("Als Profil speichern")}</SectionTitle>
           <div className="flex gap-2">
             <input
               value={profileName}
@@ -446,7 +451,7 @@ function KalibTab() {
                   setProfileName("");
                 }
               }}
-              placeholder="z. B. Objektiv 10×"
+              placeholder={tr("z. B. Objektiv 10×")}
               className="w-0 flex-1 rounded-lg border border-[var(--mw-border-strong)] bg-[var(--mw-surface-sunken)] px-2.5 py-1.5 text-[12.5px] text-[var(--mw-text)] outline-none placeholder:text-[var(--mw-text-ghost)] focus:border-[var(--mw-accent)]"
             />
             <button
@@ -458,19 +463,19 @@ function KalibTab() {
               }}
               className="rounded-lg border border-[var(--mw-border-strong)] bg-[var(--mw-hover)] px-3 text-[12px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover-strong)] disabled:opacity-30"
             >
-              Sichern
+              {tr("Sichern")}
             </button>
           </div>
         </>
       ) : (
         !pending && (
           <p className="mt-3 text-[12px] leading-relaxed text-[var(--mw-text-faint)]">
-            Ohne Maßstab wird in Pixeln gemessen.
+            {tr("Ohne Maßstab wird in Pixeln gemessen.")}
           </p>
         )
       )}
 
-      <SectionTitle>Profile</SectionTitle>
+      <SectionTitle>{tr("Profile")}</SectionTitle>
       {st.profiles.length === 0 ? (
         <p className="text-[12px] text-[var(--mw-text-ghost)]">
           Gespeicherte Maßstäbe erscheinen hier.
@@ -483,7 +488,7 @@ function KalibTab() {
               className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--mw-hover)]"
               onClick={() => st.applyProfile(p.id)}
               data-tip={p.name}
-              data-desc="Klicken, um diesen Maßstab anzuwenden"
+              data-desc={tr("Klicken, um diesen Maßstab anzuwenden")}
               data-side="left"
             >
               <span className="truncate text-[12.5px] text-[var(--mw-text-dim)]">{p.name}</span>
@@ -493,7 +498,7 @@ function KalibTab() {
                 </span>
                 <button
                   type="button"
-                  aria-label="Profil löschen"
+                  aria-label={tr("Profil löschen")}
                   onClick={(e) => {
                     e.stopPropagation();
                     st.deleteProfile(p.id);
@@ -515,6 +520,7 @@ function KalibTab() {
 
 function BildTab() {
   const st = useEditor();
+  const tr = useT();
   const f = st.filters;
   const o = st.orientation;
   const oriented = orientationActive(o);
@@ -524,14 +530,14 @@ function BildTab() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <SectionTitle>Ausrichtung</SectionTitle>
+      <SectionTitle>{tr("Ausrichtung")}</SectionTitle>
       <div className="rounded-xl border border-[var(--mw-border)] bg-[var(--mw-surface-3)] p-3">
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             className={orientBtn}
-            data-tip="Nach links drehen"
-            data-desc="90° gegen den Uhrzeigersinn"
+            data-tip={tr("Nach links drehen")}
+            data-desc={tr("90° gegen den Uhrzeigersinn")}
             data-side="left"
             disabled={!st.image}
             onClick={() => st.rotate90(-1)}
@@ -541,8 +547,8 @@ function BildTab() {
           <button
             type="button"
             className={orientBtn}
-            data-tip="Nach rechts drehen"
-            data-desc="90° im Uhrzeigersinn"
+            data-tip={tr("Nach rechts drehen")}
+            data-desc={tr("90° im Uhrzeigersinn")}
             data-side="left"
             disabled={!st.image}
             onClick={() => st.rotate90(1)}
@@ -556,8 +562,8 @@ function BildTab() {
                 ? "flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--mw-hover)] text-[var(--mw-accent-text)] transition-colors duration-150 active:scale-95 disabled:opacity-30"
                 : orientBtn
             }
-            data-tip="Automatisch begradigen"
-            data-desc="Linie entlang einer geraden Kante ziehen"
+            data-tip={tr("Automatisch begradigen")}
+            data-desc={tr("Linie entlang einer geraden Kante ziehen")}
             data-side="left"
             disabled={!st.image}
             aria-pressed={st.horizon !== null}
@@ -580,7 +586,7 @@ function BildTab() {
         </div>
         <div className="mt-2.5">
           <Slider
-            label="Geraderichten"
+            label={tr("Geraderichten")}
             min={-45}
             max={45}
             step={0.1}
@@ -588,26 +594,26 @@ function BildTab() {
             onChange={(v) => st.setOrientation({ fine: v })}
             onReset={() => st.setOrientation({ fine: 0 })}
             onHoldChange={st.setStraightenHold}
-            tip="Feinrotation wie in Apple Fotos · Raster als Horizont-Hilfe · Doppelklick setzt auf 0° zurück"
+            tip={tr("Feinrotation wie in Apple Fotos · Raster als Horizont-Hilfe · Doppelklick setzt auf 0° zurück")}
             format={(v) => (Math.abs(v) < 0.05 ? "0°" : `${fmtNumber(v, 1)}°`)}
           />
         </div>
         <p className="-mt-1.5 text-[11px] leading-snug text-[var(--mw-text-ghost)]">
-          Messungen und Maßstab werden exakt mitgedreht.
+          {tr("Messungen und Maßstab werden exakt mitgedreht.")}
         </p>
       </div>
 
-      <SectionTitle>Bildoptimierung</SectionTitle>
-      <Slider label="Helligkeit" min={0.35} max={1.8} step={0.01} value={f.brightness}
+      <SectionTitle>{tr("Bildoptimierung")}</SectionTitle>
+      <Slider label={tr("Helligkeit")} min={0.35} max={1.8} step={0.01} value={f.brightness}
         onChange={(v) => st.setFilter({ brightness: v })}
         format={(v) => `${Math.round(v * 100)} %`} />
-      <Slider label="Kontrast" min={0.35} max={1.9} step={0.01} value={f.contrast}
+      <Slider label={tr("Kontrast")} min={0.35} max={1.9} step={0.01} value={f.contrast}
         onChange={(v) => st.setFilter({ contrast: v })}
         format={(v) => `${Math.round(v * 100)} %`} />
-      <Slider label="Gamma" min={0.35} max={2.6} step={0.01} value={f.gamma}
+      <Slider label={tr("Gamma")} min={0.35} max={2.6} step={0.01} value={f.gamma}
         onChange={(v) => st.setFilter({ gamma: v })}
         format={(v) => fmtNumber(v, 2)} />
-      <Slider label="Schärfe" min={0} max={1} step={0.01} value={f.sharpen}
+      <Slider label={tr("Schärfe")} min={0} max={1} step={0.01} value={f.sharpen}
         onChange={(v) => st.setFilter({ sharpen: v })}
         format={(v) => `${Math.round(v * 100)} %`} />
       <div className="flex items-center justify-between">
@@ -615,29 +621,29 @@ function BildTab() {
           <input type="checkbox" checked={f.grayscale}
             onChange={(e) => st.setFilter({ grayscale: e.target.checked })}
             className="mw-check" />
-          Graustufen
+          {tr("Graustufen")}
         </label>
         <button type="button" onClick={st.resetFilters}
           className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] text-[var(--mw-text-faint)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text-dim)]">
-          <RotateCcw size={12.5} /> Zurücksetzen
+          <RotateCcw size={12.5} /> {tr("Zurücksetzen")}
         </button>
       </div>
       <p className="mt-2 text-[11.5px] leading-relaxed text-[var(--mw-text-ghost)]">
         Wirkt auf Ansicht und Export – das Original bleibt unverändert.
       </p>
 
-      <SectionTitle>Objektivkorrektur</SectionTitle>
+      <SectionTitle>{tr("Objektivkorrektur")}</SectionTitle>
       <Slider
-        label="Tonnen-/Kissenverzeichnung"
+        label={tr("Tonnen-/Kissenverzeichnung")}
         min={-0.35}
         max={0.35}
         step={0.005}
         value={st.lensK}
         onChange={(v) => st.setLensK(v)}
         onReset={st.resetLens}
-        tip="Gerade Linien am Bildrand wieder gerade biegen · Negativ: Kissen, Positiv: Tonne"
+        tip={tr("Gerade Linien am Bildrand wieder gerade biegen · Negativ: Kissen, Positiv: Tonne")}
         format={(v) => {
-          if (Math.abs(v) < 0.005) return "aus";
+          if (Math.abs(v) < 0.005) return tr("aus");
           return (v > 0 ? "+" : "") + fmtNumber(v, 2);
         }}
       />
@@ -647,39 +653,39 @@ function BildTab() {
           onClick={st.resetLens}
           className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-[var(--mw-text-faint)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text-dim)]"
         >
-          <RotateCcw size={11} /> Zurücksetzen
+          <RotateCcw size={11} /> {tr("Zurücksetzen")}
         </button>
       </div>
 
-      <SectionTitle>Perspektiventzerrung</SectionTitle>
+      <SectionTitle>{tr("Perspektiventzerrung")}</SectionTitle>
       {st.rectify?.active ? (
         <div className="animate-pop-in rounded-xl border border-[var(--mw-accent-border)] bg-[var(--mw-accent-bg)] p-3">
           <p className="mb-2 text-[12px] leading-relaxed text-[var(--mw-text-dim)]">
-            Vier Ecken im Uhrzeigersinn anklicken{" "}
+            {tr("Vier Ecken im Uhrzeigersinn anklicken")}{" "}
             <span className="font-tabular text-[var(--mw-accent-text)]">{st.rectify.points.length}/4</span>
           </p>
           <button type="button" onClick={st.cancelRectify}
             className="w-full rounded-lg border border-[var(--mw-border-strong)] py-1.5 text-[12px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)]">
-            Abbrechen
+            {tr("Abbrechen")}
           </button>
         </div>
       ) : (
         <button type="button" onClick={st.enterRectify}
           className="rounded-xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-3)] p-3 text-left transition-colors hover:bg-[var(--mw-hover)]">
-          <div className="text-[12.5px] font-medium text-[var(--mw-text-dim)]">Perspektive korrigieren</div>
+          <div className="text-[12.5px] font-medium text-[var(--mw-text-dim)]">{tr("Perspektive korrigieren")}</div>
           <div className="mt-0.5 text-[11.5px] leading-relaxed text-[var(--mw-text-faint)]">
-            Vier Ecken markieren – schräge Aufnahmen werden maßhaltig.
+            {tr("Vier Ecken markieren – schräge Aufnahmen werden maßhaltig.")}
           </div>
         </button>
       )}
       {st.rectifyUndo && (
         <button type="button" onClick={st.undoRectify}
           className="animate-pop-in mt-2 flex items-center justify-center gap-1.5 rounded-lg border border-[var(--mw-warn-bg)] bg-[var(--mw-warn-bg)] py-1.5 text-[12px] text-[var(--mw-warn-text)] transition-colors hover:opacity-80">
-          <RotateCcw size={13} /> Entzerrung rückgängig
+          <RotateCcw size={13} /> {tr("Entzerrung rückgängig")}
         </button>
       )}
 
-      <SectionTitle>Automatische Zählung</SectionTitle>
+      <SectionTitle>{tr("Automatische Zählung")}</SectionTitle>
       {!st.analysis.active ? (
         <button
           type="button"
@@ -690,10 +696,10 @@ function BildTab() {
           className="rounded-xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-3)] p-3 text-left transition-colors hover:bg-[var(--mw-hover)]"
         >
           <div className="flex items-center gap-2 text-[12.5px] font-medium text-[var(--mw-text-dim)]">
-            <ScanSearch size={14.5} className="text-[var(--mw-accent-text)]" /> Bereich analysieren
+            <ScanSearch size={14.5} className="text-[var(--mw-accent-text)]" /> {tr("Bereich analysieren")}
           </div>
           <div className="mt-0.5 text-[11.5px] leading-relaxed text-[var(--mw-text-faint)]">
-            Bereich aufziehen – Objekte automatisch erkennen, zählen, Fläche berechnen.
+            {tr("Bereich aufziehen – Objekte automatisch erkennen, zählen, Fläche berechnen.")}
           </div>
         </button>
       ) : (
@@ -720,13 +726,13 @@ function BildTab() {
                     : "text-[var(--mw-text-faint)] hover:text-[var(--mw-text-dim)]"
                 }`}
               >
-                {d ? "Dunkle Objekte" : "Helle Objekte"}
+                {tr(d ? "Dunkle Objekte" : "Helle Objekte")}
               </button>
             ))}
           </div>
 
           <label className="mb-2 flex cursor-pointer items-center justify-between text-[12px] text-[var(--mw-text-dim)]">
-            <span>Automatischer Schwellenwert</span>
+            <span>{tr("Automatischer Schwellenwert")}</span>
             <input
               type="checkbox"
               checked={st.analysis.autoThreshold}
@@ -737,7 +743,7 @@ function BildTab() {
 
           {!st.analysis.autoThreshold && (
             <Slider
-              label="Schwellenwert"
+              label={tr("Schwellenwert")}
               min={1}
               max={254}
               step={1}
@@ -749,7 +755,7 @@ function BildTab() {
 
           <div className="mb-2 grid grid-cols-2 gap-2">
             <Slider
-              label="Min. Fläche"
+              label={tr("Min. Fläche")}
               min={1}
               max={4000}
               step={1}
@@ -758,7 +764,7 @@ function BildTab() {
               format={(v) => `${Math.round(v)} px²`}
             />
             <Slider
-              label="Max. Fläche"
+              label={tr("Max. Fläche")}
               min={10}
               max={50000}
               step={10}
@@ -768,27 +774,27 @@ function BildTab() {
             />
           </div>
           <Slider
-            label="Objekte verbinden"
+            label={tr("Objekte verbinden")}
             min={0}
             max={6}
             step={1}
             value={st.analysis.closeRadius}
             onChange={(v) => st.setAnalysis({ closeRadius: v })}
             tip="Schließt kleine Lücken und Reflexionen innerhalb eines Objekts"
-            format={(v) => (v === 0 ? "aus" : String(Math.round(v)))}
+            format={(v) => (v === 0 ? tr("aus") : String(Math.round(v)))}
           />
 
           {st.analysisResult && st.analysis.roi && (
             <div className="mb-3 rounded-lg bg-[var(--mw-surface-sunken)] p-2.5">
               <div className="flex items-baseline justify-between text-[13px]">
-                <span className="text-[var(--mw-text-dim)]">Erkannt</span>
+                <span className="text-[var(--mw-text-dim)]">{tr("Erkannt")}</span>
                 <span className="font-tabular text-[16px] font-medium text-[var(--mw-text)]">
                   {st.analysisResult.count}
-                  <span className="ml-1 text-[11px] font-normal text-[var(--mw-text-faint)]">Objekte</span>
+                  <span className="ml-1 text-[11px] font-normal text-[var(--mw-text-faint)]">{tr("Objekte")}</span>
                 </span>
               </div>
               <div className="mt-1 flex items-baseline justify-between text-[12.5px]">
-                <span className="text-[var(--mw-text-dim)]">Gesamtfläche</span>
+                <span className="text-[var(--mw-text-dim)]">{tr("Gesamtfläche")}</span>
                 <span className="font-tabular text-[var(--mw-text)]">
                   {st.calibration && st.calibration.unit !== "px"
                     ? `${fmtNumber(st.analysisResult.totalAreaPx / (st.calibration.pixelsPerUnit ** 2))} ${st.calibration.unit}²`
@@ -837,6 +843,7 @@ const TABS: { id: PanelTab; label: string }[] = [
 ];
 
 export default function SidePanel() {
+  const tr = useT();
   const tab = useEditor((s) => s.panelTab);
   const setTab = useEditor((s) => s.setPanelTab);
   const open = useEditor((s) => s.panelOpen);
@@ -844,9 +851,9 @@ export default function SidePanel() {
   if (!open) return null;
 
   const tabLabels: Record<PanelTab, string> = {
-    mess: count > 0 ? `Messwerte (${count})` : "Messwerte",
-    kalib: "Maßstab",
-    bild: "Bild",
+    mess: count > 0 ? tr("Messwerte ({count})", { count }) : tr("Messwerte"),
+    kalib: tr("Maßstab"),
+    bild: tr("Bild"),
   };
 
   return (
