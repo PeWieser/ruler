@@ -17,6 +17,7 @@ import {
   rectFrom2,
 } from "@/lib/measure/geometry";
 import { findEdgeLocal, postProcess, radialDistort } from "@/lib/measure/imagefx";
+import { orientationActive, renderOriented } from "@/lib/measure/orientation";
 import { boxBlur, morphClose, otsuThreshold } from "@/lib/measure/geometry";
 import { drawChip, drawMeasurement, type RenderEnv } from "@/lib/measure/render";
 import { loadFromDataUrl } from "@/lib/measure/loadImage";
@@ -76,6 +77,25 @@ function pointInPolygon(p: Pt, pts: Pt[]): boolean {
       inside = !inside;
   }
   return inside;
+}
+
+/** Haben Pipeline-Zwischenstände schon die Maße der neuen Ausrichtung? */
+function srcDimsMatch(src: CanvasImageSource, w: number, h: number): boolean {
+  let sw = 0;
+  let sh = 0;
+  if (src instanceof HTMLCanvasElement || src instanceof ImageBitmap) {
+    sw = src.width;
+    sh = src.height;
+  } else if (typeof HTMLImageElement !== "undefined" && src instanceof HTMLImageElement) {
+    sw = src.naturalWidth;
+    sh = src.naturalHeight;
+  } else if (typeof HTMLVideoElement !== "undefined" && src instanceof HTMLVideoElement) {
+    sw = src.videoWidth;
+    sh = src.videoHeight;
+  } else {
+    return true; // unbekannte Quelle: nicht blockieren
+  }
+  return sw === w && sh === h;
 }
 
 export default function CanvasStage() {
@@ -396,7 +416,7 @@ export default function CanvasStage() {
     fitImage();
   }, [st.imgVersion, fitImage]);
 
-  // ── Linskorrektur als erste Stufe ──────────────────────────────────────
+  // ── Bildpipeline: Ausrichtung → Linskorrektur → Filter → Capture ────────
   useEffect(() => {
     const src = imgReg.original;
     const img = st.image;
@@ -404,10 +424,10 @@ export default function CanvasStage() {
     const token = ++rebuildToken.current;
     let alive = true;
 
-    // Ein einziger sequenzieller Ablauf: Objektivkorrektur → Filter → Capture.
-    // (Zwei getrennte Effekte hätten hier zu einem Wettlaufzustand geführt:
-    // der Capture-Aufbau lief teils, bevor die asynchrone Linsenkorrektur
-    // fertig war, wodurch die Korrektur visuell wirkungslos blieb.)
+    // Ein einziger sequenzieller Ablauf: Ausrichtung → Objektivkorrektur →
+    // Filter → Capture. (Getrennte Effekte würden hier zu Wettlaufzuständen
+    // führen: der Capture-Aufbau lief teils, bevor eine asynchrone Stufe
+    // fertig war, wodurch diese visuell wirkungslos blieb.)
     const buildCapture = (source: CanvasImageSource, W: number, H: number) => {
       const capLong = 1800;
       const cs = Math.min(1, capLong / Math.max(W, H));
@@ -427,10 +447,21 @@ export default function CanvasStage() {
       const W = img.width;
       const H = img.height;
 
-      // 1) Objektivkorrektur (radiale Verzeichnung)
+      // 1) Ausrichtung (90°-Schritte + Geraderichten mit Crop-Zoom).
+      //    W/H sind die sichtbaren Maße – die Rohmaße ergeben sich aus der
+      //    90°-Stufe (bei ungerader Stufe sind sie vertauscht).
+      const o = st.orientation;
       let base: CanvasImageSource = src;
+      if (orientationActive(o)) {
+        const rawW = o.quarter % 2 === 1 ? H : W;
+        const rawH = o.quarter % 2 === 1 ? W : H;
+        const c = renderOriented(src, rawW, rawH, o);
+        if (c) base = c;
+      }
+
+      // 2) Objektivkorrektur (radiale Verzeichnung)
       if (Math.abs(st.lensK) >= 1e-5) {
-        const c = radialDistort(src, W, H, st.lensK);
+        const c = radialDistort(base, W, H, st.lensK);
         if (c) {
           const bmp = await createImageBitmap(c).catch(() => null);
           base = bmp ?? c;
@@ -440,7 +471,7 @@ export default function CanvasStage() {
       imgReg.lensCorrected = base;
       imgReg.lensK = st.lensK;
 
-      // 2) Bildoptimierung (Helligkeit/Kontrast/Gamma/Schärfe) + Capture
+      // 3) Bildoptimierung (Helligkeit/Kontrast/Gamma/Schärfe) + Capture
       if (!filtersActive(st.filters)) {
         imgReg.processed = base;
         buildCapture(base, W, H);
@@ -472,12 +503,22 @@ export default function CanvasStage() {
     };
 
     const busy = filtersActive(st.filters) || Math.abs(st.lensK) >= 1e-5;
-    const to = setTimeout(run, busy ? 130 : 0);
+    if (busy) {
+      // Teure CPU-Stufen aktiv: leicht entprellen, damit Regler flüssig bleiben
+      const to = setTimeout(run, 130);
+      return () => {
+        alive = false;
+        clearTimeout(to);
+      };
+    }
+    // Schneller Pfad (nur Drehung/Filter aus): synchron ausführen, damit das
+    // nächste gezeichnete Bild bereits die neue Ausrichtung zeigt – kein
+    // Zwischenframe mit falschem Seitenverhältnis beim 90°-Drehen.
+    void run();
     return () => {
       alive = false;
-      clearTimeout(to);
     };
-  }, [st.imgVersion, st.filters, st.lensK, st.image, scheduleDraw]);
+  }, [st.imgVersion, st.filters, st.lensK, st.orientation, st.image, scheduleDraw]);
 
   // ── Schwellenwert-Analyse berechnen ──────────────────────────────────────
   // Wichtig: Die Abhängigkeiten sind bewusst auf einzelne, primitive Werte
@@ -637,8 +678,12 @@ export default function CanvasStage() {
     ictx.fillRect(0, 0, w, h);
 
     const img = st.image;
-    const src = imgReg.processed ?? imgReg.original;
-    if (img && src) {
+    const src = imgReg.processed ?? imgReg.lensCorrected ?? imgReg.original;
+    // Während teurer Umbauten (Filter/Objektiv) kann die Quelle kurz hinter
+    // den neuen Maßen zurückbleiben – dann lieber eine dunkle Bühne zeigen
+    // als ein verzerrtes Bild.
+    const srcReady = !!img && !!src && srcDimsMatch(src, img.width, img.height);
+    if (img && src && srcReady) {
       ictx.imageSmoothingEnabled = true;
       ictx.imageSmoothingQuality = "high";
       ictx.setTransform(dpr * t.scale, 0, 0, dpr * t.scale, dpr * t.x, dpr * t.y);
@@ -653,6 +698,17 @@ export default function CanvasStage() {
     octx.strokeStyle = "rgba(255,255,255,0.09)";
     octx.lineWidth = 1.2 / t.scale;
     octx.strokeRect(0, 0, img.width, img.height);
+
+    // Bei gedrehtem Zuschnitt (Geraderichten) endet das sichtbare Dokument am
+    // Bildrand – Überstände (weggedrehte Ecken) werden wie bei Apple Fotos
+    // ausgeblendet, statt frei auf der dunklen Bühne zu schweben.
+    const fineCrop = Math.abs(st.orientation.fine) > 1e-9;
+    if (fineCrop) {
+      octx.save();
+      octx.beginPath();
+      octx.rect(0, 0, img.width, img.height);
+      octx.clip();
+    }
 
     const env: RenderEnv = {
       strokeW: 1.9 / t.scale,
@@ -971,6 +1027,9 @@ export default function CanvasStage() {
       }
       if (pulsesRef.current.length > 0) scheduleDraw();
     }
+
+    // Zuschnitt-Clip beenden, bevor bildschirmfeste Elemente folgen
+    if (fineCrop) octx.restore();
 
     // Maßstabsbalken (Bildschirm)
     if (st.scaleBar) {

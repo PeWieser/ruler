@@ -2,53 +2,24 @@
 "use client";
 
 import type { ComponentType } from "react";
-import {
-  MousePointer2,
-  Ruler,
-  Slash,
-  Waypoints,
-  Square,
-  Circle,
-  Pentagon,
-  Hash,
-  MessageSquarePlus,
-} from "lucide-react";
 import { useEditor } from "@/lib/measure/store";
 import type { ToolId } from "@/lib/measure/types";
-
-type IconProps = { size?: number; className?: string };
-
-// Eigene präzise Glyphen für Werkzeuge ohne Lucide-Pendant (Strich 1.6 wie Lucide)
-const LotIcon: ComponentType<IconProps> = ({ size = 19, className }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M4 5v14" strokeDasharray="3 2.4" />
-    <path d="M4 12h13" />
-    <path d="M7.5 12v3h3" strokeWidth={1.3} />
-    <circle cx="20" cy="12" r="2.6" />
-  </svg>
-);
-
-const AngleIcon: ComponentType<IconProps> = ({ size = 19, className }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M4 20h15" />
-    <path d="M4 20L19 6" />
-    <path d="M11.6 20a8 8 0 0 0-3.1-6.2" strokeWidth={1.4} />
-  </svg>
-);
-
-const CrossAngleIcon: ComponentType<IconProps> = ({ size = 19, className }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M5 5l14 14" />
-    <path d="M19 5L5 19" />
-    <path d="M14.5 9.5a3.8 3.8 0 0 1 0 5" strokeWidth={1.4} />
-  </svg>
-);
-
-const EllipseIcon: ComponentType<IconProps> = ({ size = 19, className }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <ellipse cx="12" cy="12" rx="9" ry="5.8" />
-  </svg>
-);
+import {
+  AngleIcon,
+  AnnotateIcon,
+  CalibrateIcon,
+  Circle3Icon,
+  CountIcon,
+  CrossAngleIcon,
+  EllipseIcon,
+  LineIcon,
+  LotIcon,
+  PolygonIcon,
+  PolylineIcon,
+  RectIcon,
+  SelectIcon,
+  type IconProps,
+} from "./ToolIcons";
 
 interface ToolDef {
   id: ToolId;
@@ -62,17 +33,17 @@ const GROUPS: ToolDef[][] = [
   [
     {
       id: "select",
-      label: "Auswählen & Bewegen",
+      label: "Auswählen",
       key: "V",
-      desc: "Messungen anklicken und einzelne Punkte oder die gesamte Form verschieben",
-      icon: MousePointer2,
+      desc: "Anklicken, verschieben, Punkte korrigieren",
+      icon: SelectIcon,
     },
     {
       id: "calibrate",
       label: "Maßstab kalibrieren",
       key: "K",
-      desc: "Strecke mit bekannter Länge ziehen und reale Länge eingeben",
-      icon: Ruler,
+      desc: "Strecke bekannter Länge ziehen, Wert eingeben",
+      icon: CalibrateIcon,
     },
   ],
   [
@@ -80,35 +51,35 @@ const GROUPS: ToolDef[][] = [
       id: "line",
       label: "Distanz",
       key: "M",
-      desc: "Gerade Abstandsmessung zwischen zwei Punkten",
-      icon: Slash,
+      desc: "Abstand zwischen zwei Punkten",
+      icon: LineIcon,
     },
     {
       id: "polyline",
       label: "Polylinie",
       key: "P",
-      desc: "Pfadlänge entlang beliebig vieler Punkte · Enter beendet",
-      icon: Waypoints,
+      desc: "Pfadlänge über beliebig viele Punkte",
+      icon: PolylineIcon,
     },
     {
       id: "lot",
       label: "Lot",
       key: "L",
-      desc: "Senkrechter Abstand eines Punktes zu einer Referenzgeraden",
+      desc: "Senkrechter Abstand von Punkt zu Linie",
       icon: LotIcon,
     },
     {
       id: "angle",
       label: "Winkel",
       key: "W",
-      desc: "Drei Punkte: erster Schenkel, Scheitel, zweiter Schenkel",
+      desc: "Schenkel – Scheitelpunkt – Schenkel",
       icon: AngleIcon,
     },
     {
       id: "crossangle",
       label: "Schnittwinkel",
       key: "X",
-      desc: "Winkel zwischen zwei beliebigen Geraden",
+      desc: "Winkel zwischen zwei Geraden",
       icon: CrossAngleIcon,
     },
   ],
@@ -117,29 +88,29 @@ const GROUPS: ToolDef[][] = [
       id: "rect",
       label: "Rechteck",
       key: "R",
-      desc: "Fläche und Umfang über zwei gegenüberliegende Ecken",
-      icon: Square,
+      desc: "Fläche und Umfang aus zwei Ecken",
+      icon: RectIcon,
     },
     {
       id: "ellipse",
       label: "Ellipse",
       key: "E",
-      desc: "Fläche und Achsen über die Umfassungsbox aufziehen",
+      desc: "Fläche und Achsen aus der Umfassungsbox",
       icon: EllipseIcon,
     },
     {
       id: "circle3",
       label: "Kreis aus 3 Punkten",
       key: "C",
-      desc: "Radius, Durchmesser und Mittelpunkt aus drei Randpunkten",
-      icon: Circle,
+      desc: "Radius und Mittelpunkt aus drei Randpunkten",
+      icon: Circle3Icon,
     },
     {
       id: "polygon",
       label: "Polygonfläche",
       key: "F",
-      desc: "Freie Form umfahren · Startpunkt oder Enter schließt",
-      icon: Pentagon,
+      desc: "Freie Form · Startpunkt oder Enter schließt",
+      icon: PolygonIcon,
     },
   ],
   [
@@ -147,15 +118,15 @@ const GROUPS: ToolDef[][] = [
       id: "count",
       label: "Zählen",
       key: "Z",
-      desc: "Objekte anklicken – automatische Nummerierung und Summe",
-      icon: Hash,
+      desc: "Objekte anklicken – automatisch nummeriert",
+      icon: CountIcon,
     },
     {
       id: "annotate",
       label: "Notiz & Pfeil",
       key: "T",
-      desc: "Klicken für eine Notiz, Ziehen für einen beschrifteten Pfeil",
-      icon: MessageSquarePlus,
+      desc: "Klicken: Notiz · Ziehen: Pfeil",
+      icon: AnnotateIcon,
     },
   ],
 ];
@@ -182,16 +153,17 @@ export default function Toolbar() {
                 data-desc={t.desc}
                 data-key={t.key}
                 data-side="right"
-                className={`group relative flex h-9 w-9 items-center justify-center rounded-[9px] transition-all duration-150 active:scale-90 disabled:opacity-25 disabled:active:scale-100 ${
+                className={`group relative flex h-9 w-9 items-center justify-center rounded-[9px] transition-colors duration-150 disabled:opacity-25 ${
                   active
                     ? "bg-[var(--mw-accent-bg-strong)] text-[var(--mw-accent-text)]"
                     : "text-[var(--mw-text-dim)] hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
                 }`}
                 aria-label={t.label}
+                aria-pressed={active}
               >
-                <t.icon size={t.id === "line" ? 17 : 18} />
+                <t.icon size={18} />
                 {active && (
-                  <span className="absolute left-[-7px] h-4.5 w-[2.5px] rounded-full bg-[#60A5FA]" />
+                  <span className="absolute left-[-7px] h-4.5 w-[2.5px] rounded-full bg-[var(--mw-accent)]" />
                 )}
               </button>
             );

@@ -30,7 +30,7 @@ function Wordmark() {
     <div className="flex select-none items-center gap-2.5 pr-1">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M4 20V4h16" stroke="var(--mw-text)" strokeWidth="1.7" strokeLinecap="round" />
-        <path d="M4 20L20 4" stroke="#60A5FA" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M4 20L20 4" stroke="var(--mw-accent-text)" strokeWidth="1.7" strokeLinecap="round" />
         <path
           d="M8.5 20v-2.6M13 20v-2.6M17.5 20v-2.6"
           stroke="var(--mw-text)"
@@ -103,18 +103,18 @@ export default function TopBar({
   };
 
   const iconBtn =
-    "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--mw-text-dim)] transition-colors duration-150 hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)] active:scale-90 disabled:opacity-30 disabled:active:scale-100";
+    "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--mw-text-dim)] transition-colors duration-150 hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)] active:bg-[var(--mw-hover-strong)] disabled:opacity-30";
   const toggleBtn = (on: boolean) =>
-    `flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 active:scale-90 disabled:opacity-30 disabled:active:scale-100 ${
+    `flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 disabled:opacity-30 ${
       on
         ? "bg-[var(--mw-accent-bg-strong)] text-[var(--mw-accent-text)]"
-        : "text-[var(--mw-text-dim)] hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
+        : "text-[var(--mw-text-dim)] hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)] active:bg-[var(--mw-hover-strong)]"
     }`;
 
   const ppuText = (() => {
     const c = st.calibration;
     if (!c) return null;
-    return `1 px = ${fmtNumber(1 / c.pixelsPerUnit, 5)} ${c.unit}`;
+    return `${fmtNumber(c.pixelsPerUnit)} px/${c.unit}`;
   })();
 
   return (
@@ -127,10 +127,10 @@ export default function TopBar({
           type="button"
           className={iconBtn}
           data-tip="Bild öffnen"
-          data-desc="JPG, PNG, WebP, BMP oder TIFF – oder einfach irgendwo ablegen"
+          data-desc="JPG · PNG · WebP · BMP · TIFF"
           onClick={() => fileRef.current?.click()}
         >
-          <FolderOpen size={16.5} />
+          <FolderOpen size={16} />
         </button>
         {st.image && (
           <span className="max-w-44 truncate text-[12.5px] text-[var(--mw-text-faint)]">
@@ -167,13 +167,16 @@ export default function TopBar({
             data-tip={st.calibration ? "Maßstab" : "Maßstab setzen"}
             data-desc={
               st.calibration
-                ? "Kalibrierung im Seitenpanel öffnen"
-                : "Bekannte Referenzstrecke ziehen, reale Länge eingeben"
+                ? "Im Panel anpassen"
+                : "Referenzstrecke ziehen, Länge eingeben"
             }
             data-key={st.calibration ? "" : "K"}
           >
             {calibPulse && (
-              <span className="pointer-events-none absolute inset-0 rounded-full bg-[#60A5FA]/50 animate-[pop-in_0.9s_cubic-bezier(0.16,1,0.3,1)_forwards]" />
+              <span
+                className="pointer-events-none absolute inset-0 rounded-full animate-[pop-in_0.9s_cubic-bezier(0.16,1,0.3,1)_forwards]"
+                style={{ backgroundColor: "color-mix(in srgb, var(--mw-accent) 40%, transparent)" }}
+              />
             )}
             <Ruler size={13.5} className="relative" />
             {st.calibration ? (
@@ -195,7 +198,7 @@ export default function TopBar({
           disabled={!canUndo}
           onClick={st.undo}
         >
-          <Undo2 size={16.5} />
+          <Undo2 size={16} />
         </button>
         <button
           type="button"
@@ -205,7 +208,7 @@ export default function TopBar({
           disabled={!canRedo}
           onClick={st.redo}
         >
-          <Redo2 size={16.5} />
+          <Redo2 size={16} />
         </button>
 
         <span className="mx-1 h-5 w-px bg-[var(--mw-border)]" />
@@ -218,7 +221,7 @@ export default function TopBar({
           disabled={!hasImage}
           onClick={() => st.fireViewCmd("out")}
         >
-          <ZoomOut size={16.5} />
+          <ZoomOut size={16} />
         </button>
         <button
           type="button"
@@ -239,13 +242,13 @@ export default function TopBar({
           disabled={!hasImage}
           onClick={() => st.fireViewCmd("in")}
         >
-          <ZoomIn size={16.5} />
+          <ZoomIn size={16} />
         </button>
         <button
           type="button"
           className={iconBtn}
           data-tip="Einpassen"
-          data-desc="Gesamtes Bild im Fenster zeigen"
+          data-desc="Ganzes Bild anzeigen"
           data-key="0"
           disabled={!hasImage}
           onClick={() => st.fireViewCmd("fit")}
@@ -259,22 +262,22 @@ export default function TopBar({
           type="button"
           className={toggleBtn(st.snap)}
           data-tip="Kantenfang"
-          data-desc="Punkte rasten an Kontrastkanten ein – Shift hält ihn aus"
+          data-desc="Punkte rasten an Kanten ein · Shift: frei"
           data-key="S"
           disabled={!hasImage}
           onClick={() => st.setSnap(!st.snap)}
         >
-          <Magnet size={16.5} />
+          <Magnet size={16} />
         </button>
         <button
           type="button"
           className={toggleBtn(st.scaleBar)}
           data-tip="Maßstabsbalken"
-          data-desc="Balken unten rechts anzeigen und in den Export einbrennen"
+          data-desc="Im Bild und im Export anzeigen"
           disabled={!hasImage}
           onClick={() => st.setScaleBar(!st.scaleBar)}
         >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
             <path d="M4 15h16M4 15v3.5M20 15v3.5M9.5 15v2M14.5 15v2" />
           </svg>
         </button>
@@ -288,8 +291,8 @@ export default function TopBar({
             disabled={!hasImage}
             onClick={() => setMenuOpen((v) => !v)}
             data-tip="Exportieren"
-            data-desc="Bild mit Messungen als PNG oder Messwerttabelle als CSV / Excel"
-            className={`flex h-8 items-center gap-2 rounded-lg px-3 text-[12.5px] font-medium text-white transition-all duration-150 active:scale-[0.96] disabled:opacity-30 ${
+            data-desc="PNG mit Messungen · CSV · Excel"
+            className={`flex h-8 items-center gap-2 rounded-lg px-3 text-[12.5px] font-medium text-white transition-all duration-150 active:scale-[0.98] disabled:opacity-30 ${
               pngDone ? "bg-[#2FA84A]" : "bg-[var(--mw-accent)] hover:bg-[var(--mw-accent-strong)]"
             }`}
           >
@@ -348,10 +351,10 @@ export default function TopBar({
           type="button"
           className={iconBtn}
           data-tip="Seitenleiste"
-          data-desc="Messwerte, Maßstab und Bildwerkzeuge ein- oder ausblenden"
+          data-desc="Panel ein- oder ausblenden"
           onClick={() => st.setPanelOpen(!st.panelOpen)}
         >
-          {st.panelOpen ? <PanelRightClose size={16.5} /> : <PanelRightOpen size={16.5} />}
+          {st.panelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
         </button>
       </div>
     </header>

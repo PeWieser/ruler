@@ -1,8 +1,54 @@
-// ── MaßWerk · Leerzustand: Ablagefläche & Schnelleinstieg ────────────────────
+// ── MaßWerk · Leerzustand: ein Icon, ein Satz, eine Aktion ───────────────────
 "use client";
 
 import { useRef } from "react";
-import { FolderOpen, ImagePlus, Image as ImageIcon } from "lucide-react";
+
+/** App-Icon im macOS-Stil: das Lineal-Motiv der Wortmarke, groß gedacht. */
+function AppTile() {
+  return (
+    <div className="relative mb-7">
+      <div
+        aria-hidden
+        className="absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2"
+        style={{
+          background:
+            "radial-gradient(closest-side, rgba(96,165,250,0.13), transparent 72%)",
+        }}
+      />
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden className="relative">
+        <defs>
+          <linearGradient id="mw-tile" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#26262D" />
+            <stop offset="1" stopColor="#131318" />
+          </linearGradient>
+        </defs>
+        <rect
+          x="1"
+          y="1"
+          width="62"
+          height="62"
+          rx="14.5"
+          fill="url(#mw-tile)"
+          stroke="rgba(255,255,255,0.1)"
+        />
+        <path
+          d="M3 15.5A13.5 13.5 0 0 1 15.5 3h33A13.5 13.5 0 0 1 62 15.5v2a0.5 0.5 0 0 1-0.5 0.5h-61A0.5 0.5 0 0 1 3 17.5Z"
+          fill="rgba(255,255,255,0.045)"
+        />
+        <g transform="translate(14,14) scale(1.5)">
+          <path d="M4 20V4h16" stroke="#E9E9EE" strokeWidth="1.7" strokeLinecap="round" />
+          <path d="M4 20 20 4" stroke="#60A5FA" strokeWidth="1.7" strokeLinecap="round" />
+          <path
+            d="M8.5 20v-2.6M13 20v-2.6M17.5 20v-2.6"
+            stroke="#E9E9EE"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+        </g>
+      </svg>
+    </div>
+  );
+}
 
 export default function EmptyState({
   onOpenImage,
@@ -15,50 +61,38 @@ export default function EmptyState({
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0B0B0E]">
-      <div className="flex w-full max-w-md flex-col items-center px-8 text-center">
-        <svg width="58" height="58" viewBox="0 0 24 24" fill="none" className="mb-6 opacity-90">
-          <path d="M4 20V4h16" stroke="#3A3A42" strokeWidth="1.3" strokeLinecap="round" />
-          <path d="M4 20L20 4" stroke="#60A5FA" strokeWidth="1.3" strokeLinecap="round" />
-          <path d="M8.5 20v-2.6M13 20v-2.6M17.5 20v-2.6" stroke="#3A3A42" strokeWidth="1.1" strokeLinecap="round" />
-        </svg>
+      <div className="flex w-full max-w-sm flex-col items-center px-8 text-center">
+        <AppTile />
 
-        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-white/90">
-          Präzise vermessen – direkt im Bild
+        <h1 className="text-[17px] font-semibold tracking-[-0.015em] text-white/90">
+          Präzise vermessen
         </h1>
-        <p className="mt-2 text-[13px] leading-relaxed text-white/40">
-          Bild ablegen, eine bekannte Strecke kalibrieren und anschließend Distanzen,
-          Flächen, Winkel und Objekte in echten Einheiten vermessen.
+        <p className="mt-1.5 text-[13px] leading-relaxed text-white/40">
+          Bild öffnen, Maßstab setzen, in echten Einheiten messen.
         </p>
 
-        <div className="mt-7 w-full rounded-2xl border border-dashed border-white/[0.14] bg-white/[0.02] p-6 transition-colors hover:border-[#60A5FA]/50 hover:bg-[#60A5FA]/[0.03]">
-          <ImagePlus size={22} className="mx-auto mb-2.5 text-white/35" />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="rounded-lg bg-[#3B6DED] px-4 py-2 text-[13px] font-medium text-white transition-all hover:bg-[#4578F0] active:scale-[0.98]"
-          >
-            <FolderOpen size={14} className="mr-2 -mt-0.5 inline" />
-            Bild auswählen
-          </button>
-          <p className="mt-2.5 text-[12px] text-white/35">
-            oder Datei hier ablegen · Strg+V fügt ein
-          </p>
-          <p className="mt-1 text-[11px] text-white/25">
-            JPG · PNG · WebP · BMP · GIF · TIFF — auch sehr hochauflösend
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="mt-6 rounded-[10px] bg-[#3B6DED] px-4.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#4578F0] active:bg-[#2F5BD0]"
+          style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(59,109,237,0.28)" }}
+        >
+          Bild öffnen
+        </button>
+        <p className="mt-3 text-[11.5px] text-white/30">
+          Datei hierher ziehen oder mit Strg+V einfügen
+        </p>
 
         <button
           type="button"
           onClick={onSample}
-          className="mt-4 flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] text-[#8AB4FF] transition-colors hover:bg-[#60A5FA]/[0.08]"
+          className="mt-6 rounded-lg px-3 py-1.5 text-[12.5px] text-[#8AB4FF] transition-colors hover:bg-white/[0.06]"
         >
-          <ImageIcon size={14} />
-          Mit Beispielbild ausprobieren
+          Beispielbild laden
         </button>
 
-        <p className="mt-8 text-[11px] text-white/25">
-          Alle Daten bleiben lokal auf diesem Gerät – nichts wird hochgeladen.
+        <p className="mt-10 text-[11px] text-white/22">
+          Alle Daten bleiben auf diesem Gerät.
         </p>
         <input
           ref={fileRef}

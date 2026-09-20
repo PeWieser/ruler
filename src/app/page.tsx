@@ -26,7 +26,7 @@ export default function Page() {
       const img = await loadImageFile(file);
       useEditor.getState().setLoaded(img);
     } catch {
-      useEditor.getState().setBanner("Diese Datei kann nicht als Bild gelesen werden.");
+      useEditor.getState().setBanner("Die Datei konnte nicht als Bild gelesen werden.");
     } finally {
       setLoading(false);
     }
@@ -35,12 +35,12 @@ export default function Page() {
   const openSample = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/samples/beispiel.jpg");
+      const res = await fetch("/samples/beispiel.png");
       const blob = await res.blob();
-      const file = new File([blob], "beispiel.jpg", { type: "image/jpeg" });
+      const file = new File([blob], "beispiel.png", { type: "image/png" });
       const img = await loadImageFile(file);
       useEditor.getState().setLoaded(img);
-      useEditor.getState().setBanner("Beispielbild geladen – am Lineal kalibrieren, um loszulegen.");
+      useEditor.getState().setBanner("Beispiel geladen – am Lineal unten kalibrieren.");
     } catch {
       useEditor.getState().setBanner("Beispielbild konnte nicht geladen werden.");
     } finally {
@@ -117,11 +117,15 @@ export default function Page() {
       <TooltipLayer />
 
       {dragOver && (
-        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-[#0B0B0E]/80 backdrop-blur-sm">
-          <div className="rounded-2xl border-2 border-dashed border-[#60A5FA]/70 px-10 py-8 text-center">
-            <div className="text-[15px] font-medium text-white/90">Bild loslassen</div>
-            <div className="mt-1 text-[12px] text-white/45">
-              {image ? "Ersetzt das aktuelle Bild" : "JPG · PNG · WebP · BMP · TIFF"}
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-[#0B0B0E]/70 backdrop-blur-[3px]">
+          <div className="animate-pop-in flex flex-col items-center rounded-[22px] border border-white/[0.12] bg-white/[0.045] px-16 py-12 text-center shadow-2xl">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden className="mb-3.5 text-[#8AB4FF]">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            <div className="text-[15px] font-medium tracking-[-0.01em] text-white/90">Bild loslassen</div>
+            <div className="mt-1 text-[12px] text-white/40">
+              {image ? "Ersetzt das aktuelle Bild" : "JPG · PNG · WebP · BMP · GIF · TIFF"}
             </div>
           </div>
         </div>

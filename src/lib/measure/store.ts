@@ -26,7 +26,19 @@ import {
   transformPoints,
   warpPerspective,
 } from "./imagefx";
-import type { LoadedImage } from "./loadImage";
+import {
+  IDENTITY_ORIENTATION,
+  clampFine,
+  fillScale,
+  normQuarter,
+  orientationActive,
+  orientPointFwd,
+  orientPointInv,
+  orientedSize,
+  sameOrientation,
+  type Orientation,
+} from "./orientation";
+import { toStorageDataUrl, type LoadedImage } from "./loadImage";
 
 // ── Nicht-reaktive Bild-Registry (Canvas-Quellen & Capture) ──────────────────
 export interface ImageRegistry {
@@ -70,17 +82,24 @@ export const analysisReg: AnalysisMask = {
 interface RectifyBackup {
   original: CanvasImageSource;
   image: ImageMeta;
+  imageDataUrl: string | null;
   measurements: Measurement[];
   calibration: Calibration | null;
   lensK: number;
+  orientation: Orientation;
 }
 
 let rectifyBackup: RectifyBackup | null = null;
 
 // ── Snapshot für Undo/Redo ───────────────────────────────────────────────────
+// Bildtransformationen (Ausrichtung, Objektivkorrektur) gehören mit in den
+// Snapshot: Sie verschieben Messpunkte, also müssen Punkte und Transformation
+// als Einheit rückgängig gemacht werden können – sonst läuft beides auseinander.
 interface Snap {
   measurements: Measurement[];
   calibration: Calibration | null;
+  orientation: Orientation;
+  lensK: number;
 }
 
 const HISTORY_LIMIT = 60;
@@ -131,6 +150,7 @@ interface EditorState {
   calibration: Calibration | null;
   profiles: CalibrationProfile[];
   filters: Filters;
+  orientation: Orientation;
   lensK: number;
   scaleBar: boolean;
   snap: boolean;
@@ -184,6 +204,9 @@ interface EditorState {
   // ─ Bild & Analyse ─
   setFilter: (f: Partial<Filters>) => void;
   resetFilters: () => void;
+  setOrientation: (o: Partial<Orientation>) => void;
+  rotate90: (dir: 1 | -1) => void;
+  resetOrientation: () => void;
   setLensK: (k: number) => void;
   resetLens: () => void;
   setAnalysis: (a: Partial<AnalysisState>) => void;
@@ -216,6 +239,7 @@ interface PersistedSession {
   measurements: Measurement[];
   calibration: Calibration | null;
   filters: Filters;
+  orientation?: Orientation;
   scaleBar: boolean;
   snap: boolean;
 }
@@ -253,6 +277,7 @@ function queuePersist(get: () => EditorState) {
       measurements: s.measurements,
       calibration: s.calibration,
       filters: s.filters,
+      orientation: s.orientation,
       scaleBar: s.scaleBar,
       snap: s.snap,
     };
@@ -331,7 +356,29 @@ export const useEditor = create<EditorState>()((set, get) => {
   const snapshot = (): Snap => ({
     measurements: get().measurements,
     calibration: get().calibration,
+    orientation: get().orientation,
+    lensK: get().lensK,
   });
+
+  /**
+   * Passt die sichtbaren Bildmaße an, wenn sich die 90°-Stufe zwischen
+   * zwei Orientierungen unterscheidet (sonst null – nichts zu tun).
+   */
+  const dimsForUndo = (
+    image: ImageMeta | null,
+    from: Orientation,
+    to: Orientation,
+  ): ImageMeta | null => {
+    if (!image) return null;
+    if (normQuarter(from.quarter) % 2 === normQuarter(to.quarter) % 2) return null;
+    // Rohmaße aus den aktuellen sichtbaren Maßen zurückgewinnen
+    const raw =
+      normQuarter(from.quarter) % 2 === 1
+        ? { w: image.height, h: image.width }
+        : { w: image.width, h: image.height };
+    const next = orientedSize(raw.w, raw.h, to.quarter);
+    return { ...image, width: next.w, height: next.h };
+  };
 
   return {
     image: persisted?.image ?? null,
@@ -345,6 +392,7 @@ export const useEditor = create<EditorState>()((set, get) => {
     calibration: persisted?.calibration ?? null,
     profiles: loadProfiles(),
     filters: persisted?.filters ?? { ...DEFAULT_FILTERS },
+    orientation: persisted?.orientation ?? { ...IDENTITY_ORIENTATION },
     lensK: 0,
     scaleBar: persisted?.scaleBar ?? true,
     snap: persisted?.snap ?? true,
@@ -368,7 +416,8 @@ export const useEditor = create<EditorState>()((set, get) => {
       const sameDims =
         prev.image &&
         prev.image.width === img.width &&
-        prev.image.height === img.height;
+        prev.image.height === img.height &&
+        !orientationActive(prev.orientation);
       imgReg.original = img.source;
       imgReg.processed = null;
       imgReg.capture = null;
@@ -382,6 +431,7 @@ export const useEditor = create<EditorState>()((set, get) => {
         selectedId: sameDims ? prev.selectedId : null,
         draft: null,
         pendingCalib: null,
+        orientation: { ...IDENTITY_ORIENTATION },
         analysis: { ...DEFAULT_ANALYSIS },
         analysisResult: null,
         rectify: null,
@@ -411,6 +461,7 @@ export const useEditor = create<EditorState>()((set, get) => {
         pendingCalib: null,
         calibration: null,
         filters: { ...DEFAULT_FILTERS },
+        orientation: { ...IDENTITY_ORIENTATION },
         lensK: 0,
         analysis: { ...DEFAULT_ANALYSIS },
         analysisResult: null,
@@ -448,11 +499,15 @@ export const useEditor = create<EditorState>()((set, get) => {
       const s = get();
       if (s.past.length === 0) return;
       const prevState = s.past[s.past.length - 1];
+      const dims = dimsForUndo(s.image, s.orientation, prevState.orientation);
       set({
         past: s.past.slice(0, -1),
-        future: [...s.future, { measurements: s.measurements, calibration: s.calibration }],
+        future: [...s.future, snapshot()],
         measurements: prevState.measurements,
         calibration: prevState.calibration,
+        orientation: prevState.orientation,
+        lensK: prevState.lensK,
+        ...(dims ? { image: dims, imgVersion: s.imgVersion + 1 } : {}),
         selectedId:
           s.selectedId && prevState.measurements.some((m) => m.id === s.selectedId)
             ? s.selectedId
@@ -467,11 +522,15 @@ export const useEditor = create<EditorState>()((set, get) => {
       const s = get();
       if (s.future.length === 0) return;
       const next = s.future[s.future.length - 1];
+      const dims = dimsForUndo(s.image, s.orientation, next.orientation);
       set({
         future: s.future.slice(0, -1),
-        past: [...s.past, { measurements: s.measurements, calibration: s.calibration }],
+        past: [...s.past.slice(-HISTORY_LIMIT + 1), snapshot()],
         measurements: next.measurements,
         calibration: next.calibration,
+        orientation: next.orientation,
+        lensK: next.lensK,
+        ...(dims ? { image: dims, imgVersion: s.imgVersion + 1 } : {}),
         selectedId:
           s.selectedId && next.measurements.some((m) => m.id === s.selectedId)
             ? s.selectedId
@@ -728,6 +787,73 @@ export const useEditor = create<EditorState>()((set, get) => {
       persist();
     },
 
+    // ── Ausrichtung (90°-Schritte + Geraderichten, wie Apple Fotos) ──
+    // Rotation ist eine Ähnlichkeitsabbildung: Alle sichtbaren Punkte
+    // (Messungen, Entwurf, Kalibrierstrecke, Entzerr-Ecken) werden exakt
+    // mitgedreht, der Maßstab wird um den Crop-Zoom-Faktor nachgeführt.
+    setOrientation: (patch) => {
+      const s = get();
+      if (!s.image) return;
+      const old = s.orientation;
+      const next: Orientation = {
+        quarter: normQuarter(patch.quarter ?? old.quarter),
+        fine: clampFine(patch.fine ?? old.fine),
+      };
+      if (sameOrientation(next, old)) return;
+
+      // Rohmaße des Originals aus den sichtbaren Maßen zurückgewinnen
+      const rawW = normQuarter(old.quarter) % 2 === 1 ? s.image.height : s.image.width;
+      const rawH = normQuarter(old.quarter) % 2 === 1 ? s.image.width : s.image.height;
+      const remap = (p: Pt): Pt =>
+        orientPointFwd(orientPointInv(p, rawW, rawH, old), rawW, rawH, next);
+      const remapAll = (pts: Pt[]): Pt[] => pts.map(remap);
+
+      // Maßstab exakt nachführen: Verhältnis der Crop-Zoomfaktoren
+      const dimsOld = orientedSize(rawW, rawH, old.quarter);
+      const dimsNew = orientedSize(rawW, rawH, next.quarter);
+      const k =
+        fillScale(next.fine, dimsNew.w, dimsNew.h) /
+        fillScale(old.fine, dimsOld.w, dimsOld.h);
+      const calibration =
+        s.calibration && Math.abs(k - 1) > 1e-12
+          ? { ...s.calibration, pixelsPerUnit: s.calibration.pixelsPerUnit * k }
+          : s.calibration;
+
+      const quarterChanged = normQuarter(next.quarter) !== normQuarter(old.quarter);
+      const roiDropped = s.analysis.active && s.analysis.roi !== null;
+      set({
+        orientation: next,
+        measurements: s.measurements.map((m) => ({ ...m, points: remapAll(m.points) })),
+        draft: s.draft ? remapAll(s.draft) : null,
+        pendingCalib: s.pendingCalib
+          ? { a: remap(s.pendingCalib.a), b: remap(s.pendingCalib.b) }
+          : null,
+        rectify: s.rectify ? { ...s.rectify, points: remapAll(s.rectify.points) } : null,
+        analysis: roiDropped ? { ...s.analysis, roi: null } : s.analysis,
+        analysisResult: roiDropped ? null : s.analysisResult,
+        calibration,
+        image: quarterChanged
+          ? { ...s.image, width: dimsNew.w, height: dimsNew.h }
+          : s.image,
+        imgVersion: quarterChanged ? s.imgVersion + 1 : s.imgVersion,
+      });
+      persist();
+    },
+
+    rotate90: (dir) => {
+      const s = get();
+      if (!s.image) return;
+      s.pushHistory();
+      get().setOrientation({ quarter: normQuarter(s.orientation.quarter) + dir });
+    },
+
+    resetOrientation: () => {
+      const s = get();
+      if (!orientationActive(s.orientation)) return;
+      s.pushHistory();
+      get().setOrientation({ quarter: 0, fine: 0 });
+    },
+
     setLensK: (k) => {
       const s = get();
       const img = s.image;
@@ -834,11 +960,14 @@ export const useEditor = create<EditorState>()((set, get) => {
       rectifyBackup = {
         original: imgReg.original!,
         image: s.image,
+        imageDataUrl: s.imageDataUrl,
         measurements: s.measurements,
         calibration: s.calibration,
         lensK: s.lensK,
+        orientation: s.orientation,
       };
-      // Die Objektivkorrektur ist nun im Bild eingebrannt – Regler zurücksetzen
+      // Ausrichtung & Objektivkorrektur sind nun im Bild eingebrannt –
+      // Regler zurücksetzen, Sitzungsbild für den Reload neu sichern.
       imgReg.original = warped;
       imgReg.lensCorrected = null;
       imgReg.processed = null;
@@ -849,14 +978,16 @@ export const useEditor = create<EditorState>()((set, get) => {
       }));
       set({
         image: { ...s.image, width: w, height: h },
+        imageDataUrl: toStorageDataUrl(warped, w, h),
         measurements: measured,
         lensK: 0,
+        orientation: { ...IDENTITY_ORIENTATION },
         rectify: null,
         rectifyUndo: true,
         imgVersion: s.imgVersion + 1,
         past: [],
         future: [],
-        banner: "Bild entzerrt – Maßstab prüfen oder neu kalibrieren.",
+        banner: "Entzerrt – bitte Maßstab prüfen.",
       });
       persist();
     },
@@ -869,9 +1000,11 @@ export const useEditor = create<EditorState>()((set, get) => {
       imgReg.capture = null;
       set((s) => ({
         image: rectifyBackup!.image,
+        imageDataUrl: rectifyBackup!.imageDataUrl,
         measurements: rectifyBackup!.measurements,
         calibration: rectifyBackup!.calibration,
         lensK: rectifyBackup!.lensK,
+        orientation: rectifyBackup!.orientation,
         rectifyUndo: false,
         imgVersion: s.imgVersion + 1,
         past: [],

@@ -1,17 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+// Selbst gehostet (woff2 aus dem `geist`-Paket): Die Typografie darf nicht
+// von einem CDN zur Build- oder Laufzeit abhängen.
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "MaßWerk – Präzise Bildvermessung",
@@ -28,7 +21,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="de" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="de" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="antialiased">{children}</body>
     </html>
   );

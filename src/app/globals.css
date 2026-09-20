@@ -155,16 +155,20 @@ body {
 }
 
 /* ── Scrollbars ────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mw-border-strong) transparent;
+}
 ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--mw-border-strong);
-  border-radius: 8px;
+  border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -174,6 +178,8 @@ body {
 }
 
 /* ── Range-Slider ──────────────────────────────────────────────────────── */
+/* Wie in den macOS-Systemeinstellungen: 3-px-Track, weißer Kopf mit
+   hauchfeinem Rand und Schatten – der Kopf „schwebt" über der Linie.   */
 .mw-range {
   -webkit-appearance: none;
   appearance: none;
@@ -183,39 +189,40 @@ body {
 }
 .mw-range::-webkit-slider-runnable-track {
   height: 3px;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--mw-border-strong);
 }
 .mw-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 13px;
-  height: 13px;
-  margin-top: -5px;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
   border-radius: 50%;
-  background: var(--mw-accent);
-  border: 2px solid light-dark(#ffffff, #f4f4f5);
-  box-shadow: 0 1px 4px var(--mw-shadow);
+  background: light-dark(#ffffff, #f7f7f9);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 0.5px 1.5px rgba(0, 0, 0, 0.28),
+    0 1px 4px rgba(0, 0, 0, 0.14);
   transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.mw-range::-webkit-slider-thumb:hover {
-  transform: scale(1.18);
-}
-.mw-range::-webkit-slider-thumb:active {
-  transform: scale(0.95);
+.mw-range:active::-webkit-slider-thumb {
+  transform: scale(1.12);
 }
 .mw-range::-moz-range-track {
   height: 3px;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--mw-border-strong);
 }
 .mw-range::-moz-range-thumb {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--mw-accent);
-  border: 2px solid light-dark(#ffffff, #f4f4f5);
-  box-shadow: 0 1px 4px var(--mw-shadow);
+  background: light-dark(#ffffff, #f7f7f9);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 0.5px 1.5px rgba(0, 0, 0, 0.28),
+    0 1px 4px rgba(0, 0, 0, 0.14);
 }
 
 /* ── Checkboxen & Fokus ────────────────────────────────────────────────── */
@@ -239,4 +246,15 @@ button {
 select option {
   background: var(--mw-surface-3);
   color: var(--mw-text);
+}
+
+/* ── Bewegung respektieren ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
