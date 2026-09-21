@@ -19,7 +19,12 @@ import {
 } from "@/lib/measure/geometry";
 import { findEdgeLocal, postProcess, radialDistort } from "@/lib/measure/imagefx";
 import { glAvailable, glRenderPipeline } from "@/lib/measure/glpipe";
-import { orientationActive, renderOriented, renderOrientedFull } from "@/lib/measure/orientation";
+import {
+  IDENTITY_ORIENTATION,
+  orientationActive,
+  renderOriented,
+  renderOrientedFull,
+} from "@/lib/measure/orientation";
 import { boxBlur, morphClose, otsuThreshold } from "@/lib/measure/geometry";
 import { drawChip, drawMeasurement, type RenderEnv } from "@/lib/measure/render";
 import { loadFromDataUrl } from "@/lib/measure/loadImage";
@@ -522,23 +527,33 @@ export default function CanvasStage() {
       const W = img.width;
       const H = img.height;
 
-      // 0) GPU-Vorzugsweg: EIN WebGL-Kontext für Rotation, radiale
-      //    Objektivkorrektur und Filter – ohne getImageData-Schleifen,
-      //    ohne Entprellen. lensCorrected bleibt ungefiltert (Export &
-      //    Kantenfang lesen davon); die CPU-Kette darunter ist der
-      //    ehrliche Rückfall, falls WebGL fehlt oder scheitert.
+      // 0) Ausrichtung zuerst – auf der CPU-Kette: renderOriented teilt
+      //    sich die Mathematik mit dem Geisterhintergrund (orientFull) und
+      //    dem Punkt-Mapping (orientPointFwd). EINE Wahrheit für Geometrie.
+      //    Der Shader-Geometriepfad besaß kein Crop-to-Fill und konnte
+      //    transparente Keile liefern – das Bild wirkte ausgeblendet.
       const o0 = st.orientation;
+      let base: CanvasImageSource = src;
+      if (orientationActive(o0)) {
+        const rawW = o0.quarter % 2 === 1 ? H : W;
+        const rawH = o0.quarter % 2 === 1 ? W : H;
+        const c = renderOriented(src, rawW, rawH, o0);
+        if (c) base = c;
+      }
+
+      // 1) GPU-Vorzugsweg für Linse + Filter AUF dem ausgerichteten Basis-
+      //    bild (Geometrie identisch, kein Rotations-Shader-Pfad).
+      //    lensCorrected bleibt ungefiltert (Export & Kantenfang lesen
+      //    davon); die CPU-Kette darunter ist der ehrliche Rückfall.
       const glRes =
-        orientationActive(o0) ||
-        Math.abs(st.lensK) >= 1e-5 ||
-        filtersActive(st.filters)
+        Math.abs(st.lensK) >= 1e-5 || filtersActive(st.filters)
           ? glRenderPipeline(
-              src,
-              o0.quarter % 2 === 1 ? H : W,
-              o0.quarter % 2 === 1 ? W : H,
+              base,
               W,
               H,
-              o0,
+              W,
+              H,
+              IDENTITY_ORIENTATION,
               st.lensK,
               st.filters,
             )
@@ -565,18 +580,6 @@ export default function CanvasStage() {
         refreshCapture(glRes.processed, W, H);
         scheduleDraw();
         return;
-      }
-
-      // 1) Ausrichtung (90°-Schritte + Geraderichten mit Crop-Zoom).
-      //    W/H sind die sichtbaren Maße – die Rohmaße ergeben sich aus der
-      //    90°-Stufe (bei ungerader Stufe sind sie vertauscht).
-      const o = st.orientation;
-      let base: CanvasImageSource = src;
-      if (orientationActive(o)) {
-        const rawW = o.quarter % 2 === 1 ? H : W;
-        const rawH = o.quarter % 2 === 1 ? W : H;
-        const c = renderOriented(src, rawW, rawH, o);
-        if (c) base = c;
       }
 
       // 2) Objektivkorrektur (radiale Verzeichnung)
@@ -908,7 +911,7 @@ export default function CanvasStage() {
     if (horizonActive && st.horizon && st.horizon.length >= 1) {
       // Horizont-Entwurf: Linie vom ersten Punkt zum Cursor (oder zum
       // bereits gesetzten zweiten Punkt)
-      const cur = effRef.current?.pt ?? cursorImgRef.current;
+      const cur = cursorImgRef.current;
       const a = st.horizon[0];
       const b = st.horizon.length > 1 ? st.horizon[1] : cur;
       if (b) {
@@ -1512,8 +1515,10 @@ export default function CanvasStage() {
     if (e.button !== 0) return;
 
     if (st.horizon !== null) {
-      // Automatisch begradigen: Kante entlangziehen – Edge-Snap hilft dabei
-      st.addHorizonPoint(effRef.current.pt);
+      // Automatisch begradigen: Der WINKEL ist die Messung – deshalb der
+      // rohe Cursorpunkt. Snap würde die Linie an Endpunkte zerren und
+      // den Winkel um Grade verfälschen. (Visuelle Kante finden = Auge.)
+      st.addHorizonPoint(p);
       downActionRef.current = { kind: "horizon", t: performance.now() };
       return;
     }
