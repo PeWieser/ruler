@@ -520,8 +520,8 @@ export default function CanvasStage() {
       const H = img.height;
 
       // 0) Ausrichtung zuerst – auf der CPU-Kette: renderOriented teilt
-      //    sich die Mathematik mit dem Geisterhintergrund (orientFull) und
-      //    dem Punkt-Mapping (orientPointFwd). EINE Wahrheit für Geometrie.
+      //    sich die Mathematik mit dem Punkt-Mapping (orientPointFwd).
+      //    EINE Wahrheit für Geometrie, sichtbar und gehalten identisch.
       //    Der Shader-Geometriepfad besaß kein Crop-to-Fill und konnte
       //    transparente Keile liefern – das Bild wirkte ausgeblendet.
       const o0 = st.orientation;

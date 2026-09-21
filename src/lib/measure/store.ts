@@ -36,7 +36,6 @@ import {
   orientPointInv,
   orientedSize,
   sameOrientation,
-  straightenDelta,
   straightenOrientation,
   type Orientation,
 } from "./orientation";
