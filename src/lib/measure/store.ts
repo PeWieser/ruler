@@ -37,7 +37,7 @@ import {
   orientedSize,
   sameOrientation,
   straightenDelta,
-  straightenDeltaAxis,
+  straightenOrientation,
   type Orientation,
 } from "./orientation";
 import {
@@ -1196,15 +1196,15 @@ export const useEditor = create<EditorState>()((set, get) => {
         set({ horizon: pts });
         return;
       }
-      const fine = straightenDeltaAxis(
-        s.orientation.fine,
+      const next = straightenOrientation(
+        s.orientation,
         pts[0],
         pts[1],
         s.horizonAxis,
       );
       set({ horizon: null });
       s.pushHistory();
-      get().setOrientation({ fine });
+      get().setOrientation(next);
     },
 
     cancelHorizon: () => set({ horizon: null }),

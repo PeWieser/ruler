@@ -120,19 +120,26 @@ export function straightenDelta(currentFine: number, a: Pt, b: Pt): number {
   return Math.round(clampFine(currentFine + (primary - deg)) * 10) / 10;
 }
 
-/** Wie straightenDelta, aber die Zielachse entscheidet der Mensch:
-    "h" richtet die gezeichnete Linie horizontal aus, "v" vertikal. */
-export function straightenDeltaAxis(
-  currentFine: number,
+/** Automatisch begradigen: die gezeichnete Linie wird zur gewählten Achse.
+    Liegt das Ziel außerhalb der ±45°-Feinspanne, wandert der Überhang
+    ehrlich in einen 90°-Schritt – die Sperre schützt den Regler,
+    nicht die Entscheidung des Menschen. */
+export function straightenOrientation(
+  cur: Orientation,
   a: Pt,
   b: Pt,
   axis: "h" | "v",
-): number {
+): Orientation {
   let deg = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
   // auf (−90, 90] normalisieren
   deg = ((((deg + 90) % 180) + 180) % 180) - 90;
-  const target = axis === "h" ? 0 : deg >= 0 ? 90 : -90;
-  return Math.round(clampFine(currentFine + (target - deg)) * 10) / 10;
+  const delta = axis === "h" ? -deg : deg >= 0 ? 90 - deg : -90 - deg;
+  const total = cur.fine + delta;
+  const q = Math.round(total / 90);
+  return {
+    quarter: normQuarter(cur.quarter + q),
+    fine: Math.round(clampFine(total - q * 90) * 10) / 10,
+  };
 }
 
 /**

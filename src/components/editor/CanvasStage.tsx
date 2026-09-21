@@ -23,7 +23,6 @@ import {
   IDENTITY_ORIENTATION,
   orientationActive,
   renderOriented,
-  renderOrientedFull,
 } from "@/lib/measure/orientation";
 import { boxBlur, morphClose, otsuThreshold } from "@/lib/measure/geometry";
 import { drawChip, drawMeasurement, type RenderEnv } from "@/lib/measure/render";
@@ -507,17 +506,10 @@ export default function CanvasStage() {
     const token = ++rebuildToken.current;
     let alive = true;
 
-    // Unterlage fürs Geraderichten: die UNBESCHNITTENE gedrehte Ansicht.
-    // Der Rahmen bleibt stehen, der Inhalt dreht sichtbar daraus hervor –
-    // die Operation wird erklärt statt heimlich beschnitten (Apple Fotos).
-    if (Math.abs(st.orientation.fine) > 1e-9) {
-      const o = st.orientation;
-      const rawW = o.quarter % 2 === 1 ? img.height : img.width;
-      const rawH = o.quarter % 2 === 1 ? img.width : img.height;
-      imgReg.orientFull = renderOrientedFull(src, rawW, rawH, o);
-    } else {
-      imgReg.orientFull = null;
-    }
+    // Kein Geisterhintergrund mehr: zwei übereinanderliegende Drehungen
+    // (unzoomiert dahinter, zugeschnitten davor) lasen sich wie ein
+    // asynchron mitlaufendes Zweitbild. Die Erklärung beim Geraderichten
+    // tragen Raster + Akzentrahmen + Glow allein – ruhig und eindeutig.
 
     // Ein einziger sequenzieller Ablauf: Ausrichtung → Objektivkorrektur →
     // Filter → Capture. (Getrennte Effekte würden hier zu Wettlaufzuständen
@@ -814,8 +806,21 @@ export default function CanvasStage() {
     const octx = oc.getContext("2d");
     if (!ictx || !octx) return;
 
+    // Die Bühne folgt dem Erscheinungsbild: Hell ist ein Lighttable,
+    // Dunkel ein Studiotisch. Werte spiegeln --mw-canvas aus globals.css.
+    const darkStage = document.documentElement.dataset.theme !== "light";
+    const stageBg = darkStage ? "#0b0b0e" : "#ececee";
+    const edgeLine = darkStage ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.16)";
+    const gridStrong = darkStage ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.24)";
+    const gridFaint = darkStage ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.12)";
+    const snapRing = darkStage ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
+    const loupeCross = darkStage
+      ? "rgba(255,255,255,0.92)"
+      : "rgba(0,0,0,0.78)";
+    const loupeRing = darkStage ? "rgba(255,255,255,0.62)" : "rgba(0,0,0,0.45)";
+
     ictx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ictx.fillStyle = "#0B0B0E";
+    ictx.fillStyle = stageBg;
     ictx.fillRect(0, 0, w, h);
 
     const img = st.image;
@@ -833,7 +838,7 @@ export default function CanvasStage() {
     const horizonActive = st.horizon !== null;
     const straightenHoldOn = st.straightenHold || horizonActive;
     const straightenOn =
-      !!img && !!imgReg.orientFull && Math.abs(st.orientation.fine) > 1e-9 &&
+      !!img && Math.abs(st.orientation.fine) > 1e-9 &&
       (straightenHoldOn || st.straightenGlowUntil > Date.now());
     const glowT = straightenHoldOn
       ? 1
@@ -843,21 +848,6 @@ export default function CanvasStage() {
       ictx.imageSmoothingEnabled = true;
       ictx.imageSmoothingQuality = "high";
       ictx.setTransform(dpr * t.scale, 0, 0, dpr * t.scale, dpr * t.x, dpr * t.y);
-      if (straightenOn && imgReg.orientFull) {
-        // Hintergrund: vollständig gedrehtes Bild, der sichtbare Rahmen
-        // liegt mittig darauf – nichts geht „verloren“, es liegt nur außen.
-        const wu = imgReg.orientFull.width;
-        const hu = imgReg.orientFull.height;
-        ictx.globalAlpha = 0.55 * glowT;
-        ictx.drawImage(
-          imgReg.orientFull,
-          -(wu - img.width) / 2,
-          -(hu - img.height) / 2,
-          wu,
-          hu,
-        );
-        ictx.globalAlpha = 1;
-      }
       try {
         ictx.drawImage(src, 0, 0, img.width, img.height);
       } catch {
@@ -871,7 +861,7 @@ export default function CanvasStage() {
     if (!img || !src) return;
 
     octx.setTransform(dpr * t.scale, 0, 0, dpr * t.scale, dpr * t.x, dpr * t.y);
-    octx.strokeStyle = "rgba(255,255,255,0.09)";
+    octx.strokeStyle = edgeLine;
     octx.lineWidth = 1.2 / t.scale;
     octx.strokeRect(0, 0, img.width, img.height);
 
@@ -880,7 +870,7 @@ export default function CanvasStage() {
       // Referenz ist der Zielrahmen – nicht der mitgedrehte Inhalt.
       octx.save();
       octx.globalAlpha = glowT;
-      octx.strokeStyle = "rgba(255,255,255,0.20)";
+      octx.strokeStyle = gridStrong;
       octx.lineWidth = 1 / t.scale;
       octx.beginPath();
       for (const f of [1 / 3, 2 / 3]) {
@@ -890,7 +880,7 @@ export default function CanvasStage() {
         octx.lineTo(img.width, img.height * f);
       }
       octx.stroke();
-      octx.strokeStyle = "rgba(255,255,255,0.10)";
+      octx.strokeStyle = gridFaint;
       octx.beginPath();
       octx.moveTo(img.width / 2, 0);
       octx.lineTo(img.width / 2, img.height);
@@ -1036,7 +1026,7 @@ export default function CanvasStage() {
         octx.arc(q.x, q.y, env.fontPx * 0.85, 0, Math.PI * 2);
         octx.fillStyle = "#60A5FA";
         octx.fill();
-        octx.fillStyle = "#0B0B0E";
+        octx.fillStyle = stageBg;
         octx.fillText(String(i + 1), q.x, q.y + env.fontPx * 0.04);
       });
       octx.restore();
@@ -1242,9 +1232,7 @@ export default function CanvasStage() {
       const p = effRef.current.pt;
       const len = 8 / t.scale;
       octx.save();
-      octx.strokeStyle = effRef.current.snapped
-        ? "#4ADE80"
-        : "rgba(255,255,255,0.55)";
+      octx.strokeStyle = effRef.current.snapped ? "#4ADE80" : snapRing;
       octx.lineWidth = Math.max(1, env.strokeW * 0.7);
       octx.beginPath();
       octx.moveTo(p.x - len, p.y);
@@ -1338,7 +1326,7 @@ export default function CanvasStage() {
           octx.stroke();
         }
       }
-      octx.strokeStyle = "rgba(255,255,255,0.92)";
+      octx.strokeStyle = loupeCross;
       octx.lineWidth = 1;
       octx.beginPath();
       octx.moveTo(lx - radius, ly);
@@ -1354,7 +1342,7 @@ export default function CanvasStage() {
       octx.save();
       octx.beginPath();
       octx.arc(lx, ly, radius, 0, Math.PI * 2);
-      octx.strokeStyle = loupe.snapped ? "#4ADE80" : "rgba(255,255,255,0.62)";
+      octx.strokeStyle = loupe.snapped ? "#4ADE80" : loupeRing;
       octx.lineWidth = 1.6;
       octx.stroke();
       octx.beginPath();
@@ -2110,7 +2098,7 @@ export default function CanvasStage() {
           }}
           onPointerDown={(e) => e.stopPropagation()}
           placeholder={tr("Beschriftung …")}
-          className="absolute z-20 -translate-y-8 rounded-md border border-white/15 bg-[#141419] px-2.5 py-1.5 text-[13px] text-white shadow-xl outline-none placeholder:text-white/30 focus:border-[#60A5FA]"
+          className="absolute z-20 -translate-y-8 rounded-md border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] px-2.5 py-1.5 text-[13px] text-[var(--mw-text)] shadow-xl outline-none placeholder:text-[var(--mw-text-ghost)] focus:border-[var(--mw-accent)]"
           style={{ left: notePos.x + 10, top: notePos.y - 4, minWidth: 170 }}
         />
       )}

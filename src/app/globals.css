@@ -52,7 +52,7 @@
      Die Bildbühne selbst bleibt bewusst immer dunkel – wie bei
      professioneller Bild- und Messsoftware üblich (Photoshop, Lightroom,
      ImageJ …) – nur die Werkzeug-Chrome wechselt mit. ──────────────── */
-  --mw-canvas: #0b0b0e;
+  --mw-canvas: #ececee; /* Bühne: Lighttable im Hell-Modus */
   --mw-thumb: #ffffff;
 
   --mw-surface-0: #ffffff; /* Werkzeugleiste */
@@ -90,6 +90,7 @@
 /* Dunkel: explizit ueber data-theme – deterministisch in jedem Browser,
    ohne Verlass auf dynamisches light-dark() in Custom Properties. */
 :root[data-theme="dark"] {
+  --mw-canvas: #0b0b0e; /* Bühne: Studiotisch im Dunkel-Modus */
   --mw-surface-sunken: #101014;
   --mw-surface-4: #1e1e25;
   --mw-surface-3: #1a1a20;

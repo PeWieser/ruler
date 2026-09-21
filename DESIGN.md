@@ -427,6 +427,24 @@ Zwei Wurzelfehler, beide strukturell behoben:
   jetzt den rohen Cursorpunkt; auch die Vorschaulinie folgt ihm. Snap
   bleibt, wo er hingehört: beim Zeichnen von Messungen.
 
+## 3f · Begradigen & Bühne, Runde 5c
+
+- **Geisterhintergrund retired.** Zwei übereinanderliegende Drehungen
+  (unzoomiert dahinter, Crop-to-Fill davor) lasen sich wie ein asynchron
+  mitlaufendes Zweitbild, und der Rahmen „schnitt" sichtbart das Geister-
+  bild ab. Die Erklärung beim Geraderichten tragen jetzt Raster,
+  Akzentrahmen und Glow allein – eine Drehung, eine Wahrheit.
+- **45°-Sperre schützt den Regler, nicht die Entscheidung.**
+  `straightenOrientation` verteilt das Ziel auf Feinwinkel UND 90°-Schritt:
+  „Vertikal" auf einer fast waagerechten Kante wird ein ehrlicher
+  Viertelturn statt eines Clamp-Anschlags an 45° (der zuvor den
+  Crop-to-Fill-Zoom ins Extreme trieb und das Bild massiv beschnitt).
+- **Bühne folgt dem Erscheinungsbild.** Hell = Lighttable (#ececee),
+  Dunkel = Studiotisch (#0b0b0e); `--mw-canvas` trägt beide Werte, Raster-,
+  Kanten-, Snap- und Lupenfarben wechseln mit. Die Profikonvention
+  „Bühne immer dunkel" ist auf ausdrücklichen Wunsch aufgehoben –
+  das Produkt gehört dem Menschen, nicht der Konvention.
+
 ---
 
 ## 4 · Messlatte für jede künftende Änderung
