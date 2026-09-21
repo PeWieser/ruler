@@ -240,8 +240,8 @@ export const EN: Record<string, string> = {
   "Kantenfang aktiviert": "Edge snapping on",
   "Kantenfang deaktiviert": "Edge snapping off",
   "Die Datei konnte nicht als Bild gelesen werden.": "The file could not be read as an image.",
-  "Beispiel geladen – Maßstab am Stahl-Lineal kalibrieren, z. B. 0–10 cm.":
-    "Sample loaded – calibrate on the steel ruler, e.g. 0–10 cm.",
+  "Beispiel geladen – Maßstab am Holzlineal kalibrieren, z. B. 0–10 cm.":
+    "Sample loaded – calibrate on the wooden ruler, e.g. 0–10 cm.",
   "Beispielbild konnte nicht geladen werden.": "The sample image could not be loaded.",
 
   // ── Kleine Bühne, Namen, Thema, Meilensteine (D1–D6) ──────────────────────

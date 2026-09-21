@@ -333,19 +333,36 @@ select option {
 @media (max-width: 899px) {
   .mw-panel {
     position: fixed;
-    top: 48px;
-    right: 0;
-    bottom: 32px;
+    /* Geometrie folgt der echten Chrome: Kopfleiste 48 px, Statuszeile
+       32 px – und den Safe-Areas des Geräts, wo es welche gibt. */
+    top: calc(48px + env(safe-area-inset-top, 0px));
+    right: env(safe-area-inset-right, 0px);
+    bottom: calc(32px + env(safe-area-inset-bottom, 0px));
     width: min(320px, 88vw);
+    padding-top: 16px;
     z-index: 45;
     border-left: 1px solid var(--mw-border-strong);
     box-shadow: -18px 0 48px var(--mw-shadow);
     animation: mw-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   }
+  /* Der Griff: die Geste, die ein Sheet als Sheet erkennbar macht. */
+  .mw-panel::before {
+    content: "";
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: var(--mw-border-strong);
+  }
   .mw-panel-backdrop {
     display: block;
     position: fixed;
-    inset: 48px 0 32px 0;
+    inset: calc(48px + env(safe-area-inset-top, 0px))
+      env(safe-area-inset-right, 0px)
+      calc(32px + env(safe-area-inset-bottom, 0px)) 0;
     z-index: 44;
     background: rgba(0, 0, 0, 0.32);
     backdrop-filter: blur(1.5px);

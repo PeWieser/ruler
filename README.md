@@ -42,9 +42,9 @@ npm run dev      # http://localhost:3000
 ```
 
 No image at hand? Use **“Load sample image”** in the empty state: a
-photographic workbench scene (`public/samples/beispiel.jpg`) with a steel
-ruler, caliper and machined blocks – a natural target for calibration,
-straightening and object counting.
+flat-lay on blueprint paper (`public/beispiel.png`) with a wooden ruler,
+a caliper, ball bearings, a gear and bolts – natural targets for
+calibration, straightening and object counting.
 
 ## Keyboard
 
@@ -78,7 +78,7 @@ self-hosted.
 
 - `src/lib/measure/` – geometry, image processing, rendering, export, store
 - `src/components/editor/` – stage, bars, panel, tooltips, shortcut overlay
-- `public/samples/beispiel.jpg` – built-in demo photograph (workbench)
+- `public/beispiel.png` – built-in demo image (blueprint flat-lay)
 
 Design principles and the full review backlog: [`DESIGN.md`](DESIGN.md)
 (written in German).

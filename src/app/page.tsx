@@ -2,7 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import TopBar from "@/components/editor/TopBar";
 import Toolbar from "@/components/editor/Toolbar";
 import CanvasStage from "@/components/editor/CanvasStage";
@@ -22,6 +22,7 @@ export default function Page() {
   const banner = useEditor((s) => s.banner);
   const setBanner = useEditor((s) => s.setBanner);
   const [dragOver, setDragOver] = useState(false);
+  const [dragDoc, setDragDoc] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const openFile = useCallback(async (file: File) => {
@@ -48,13 +49,13 @@ export default function Page() {
   const openSample = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/samples/beispiel.jpg");
+      const res = await fetch("/beispiel.png");
       const blob = await res.blob();
       const file = new File([blob], "werkbank.jpg", { type: "image/jpeg" });
       const img = await loadImageFile(file);
       useEditor.getState().setLoaded(img);
       useEditor.getState().setBanner(
-        tr("Beispiel geladen – Maßstab am Stahl-Lineal kalibrieren, z. B. 0–10 cm."),
+        tr("Beispiel geladen – Maßstab am Holzlineal kalibrieren, z. B. 0–10 cm."),
       );
     } catch {
       useEditor.getState().setBanner(tr("Beispielbild konnte nicht geladen werden."));
@@ -68,16 +69,27 @@ export default function Page() {
     const onDragOver = (e: DragEvent) => {
       e.preventDefault();
       setDragOver(true);
+      // D6: Schon beim Schweben wissen, wer kommt – Bild oder Dokument
+      const name =
+        Array.from(e.dataTransfer?.items ?? [])
+          .map((it) => it.getAsFile()?.name ?? "")
+          .find((n) => n.length > 0) ?? "";
+      setDragDoc(/\.masswerk$/i.test(name));
     };
     const onDragLeave = (e: DragEvent) => {
-      if (!e.relatedTarget) setDragOver(false);
+      if (!e.relatedTarget) {
+        setDragOver(false);
+        setDragDoc(false);
+      }
     };
     const onDrop = (e: DragEvent) => {
       e.preventDefault();
       setDragOver(false);
+      setDragDoc(false);
       const dt = e.dataTransfer;
       if (!dt) return;
-      const f = imageFileFromDataTransfer(dt);
+      const doc = Array.from(dt.files).find((x) => /\.masswerk$/i.test(x.name));
+      const f = doc ?? imageFileFromDataTransfer(dt);
       if (f) openFile(f);
     };
     const onPaste = (e: ClipboardEvent) => {
@@ -132,8 +144,8 @@ export default function Page() {
           <CanvasStage />
           {!image && <EmptyState onOpenImage={openFile} onSample={openSample} />}
           {loading && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
-              <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-[#17171C] px-4 py-3 text-[13px] text-white/80">
+            <div className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-[2px]" style={{ background: "color-mix(in srgb, var(--mw-surface-0) 62%, transparent)" }}>
+              <div className="flex items-center gap-2.5 rounded-xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] px-4 py-3 text-[13px] text-[var(--mw-text-dim)]" style={{ boxShadow: "0 12px 32px var(--mw-shadow)" }}>
                 <Loader2 size={16} className="animate-spin text-[#8AB4FF]" />
                 {tr("Bild wird geladen …")}
               </div>
@@ -147,15 +159,29 @@ export default function Page() {
       <ShortcutOverlay />
 
       {dragOver && (
-        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-[#0B0B0E]/70 backdrop-blur-[3px]">
-          <div className="animate-pop-in flex flex-col items-center rounded-[22px] border border-white/[0.12] bg-white/[0.045] px-16 py-12 text-center shadow-2xl">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden className="mb-3.5 text-[#8AB4FF]">
-              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-            <div className="text-[15px] font-medium tracking-[-0.01em] text-white/90">{tr("Bild loslassen")}</div>
-            <div className="mt-1 text-[12px] text-white/40">
-              {tr(image ? "Ersetzt das aktuelle Bild" : "JPG · PNG · WebP · BMP · GIF · TIFF")}
+        <div
+          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[3px]"
+          style={{ background: "color-mix(in srgb, var(--mw-surface-0) 74%, transparent)" }}
+        >
+          <div
+            className="animate-pop-in flex flex-col items-center rounded-[22px] border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] px-16 py-12 text-center shadow-2xl"
+            style={{ boxShadow: "0 24px 64px var(--mw-shadow)" }}
+          >
+            {dragDoc ? (
+              <FileText size={30} strokeWidth={1.6} className="mb-3.5 text-[var(--mw-warn-text)]" />
+            ) : (
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden className="mb-3.5 text-[var(--mw-accent-text)]">
+                <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            )}
+            <div className="text-[15px] font-medium tracking-[-0.01em] text-[var(--mw-text)]">
+              {dragDoc ? tr("Dokument loslassen") : tr("Bild loslassen")}
+            </div>
+            <div className="mt-1 text-[12px] text-[var(--mw-text-faint)]">
+              {dragDoc
+                ? tr("Stellt die gesamte Sitzung wieder her.")
+                : tr(image ? "Ersetzt das aktuelle Bild" : "JPG · PNG · WebP · BMP · GIF · TIFF")}
             </div>
           </div>
         </div>

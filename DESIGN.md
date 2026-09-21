@@ -105,10 +105,10 @@ Privacy-Satz, Sample-Link – und ein Sample, das es nie gab
 
 **Jetzt:** App-Icon-Kachel im macOS-Stil mit sanftem Glow, ein Titel, ein Satz,
 eine primäre Aktion, eine Zeile Hinweis, ein Sample-Link, ein Trust-Satz.
-Das Sample ist eine echte Fotografie-Szene (`public/samples/beispiel.jpg`):
-Werkbank mit diagonalem Stahl-Lineal, Messschieber, Aluminium-Blöcken –
-natürliche Ziele für Kalibrierung (Lineal), Auto-Begradigen (Kanten) und
-Zähl-Analyse (Schrauben). Ehrlich statt synthetisch-exakt: ein Beispielbild
+Das Sample ist eine echte Fotografie-Szene (`public/beispiel.png`):
+Flachlage auf Blueprint-Papier mit diagonalem Holzlineal, Messschieber,
+Kugellagern, Zahnrad und Schrauben – natürliche Ziele für Kalibrierung
+(Lineal), Auto-Begradigen (Kanten) und Zähl-Analyse (Lager/Schrauben). Ehrlich statt synthetisch-exakt: ein Beispielbild
 muss schön genug sein, dass man es freiwillig ansieht
 (`DESIGN_GUIDELINES.md` §4.6, §6.8).
 
@@ -351,6 +351,25 @@ mit Griffen und Cursor-Versprechen; Einzelobjekt-Flächenliste im Panel.
 - **D6 · Dokument mit Gesicht – ERLEDIGT.** Das Drop-Overlay erkennt beim
   Schweben, ob ein Bild oder ein `.masswerk`-Dokument kommt, und wechselt
   Ikone (Gelb statt Blau), Titel und Untertitel.
+
+## 3c · Nachklang (Audit-Runde 3) – Themen-Wahrheit, Türen, Sample
+
+- **Thema wirklich umschaltbar.** Der Leerzustand und die Overlays (Drop,
+  Lade-Schleier) trugen hartkodierte Dunkel-Farben – ein Themenwechsel war
+  dort unsichtbar. Jetzt folgen alle Flächen den Token; die Bildbühne bleibt
+  bewusst immer dunkel (Profikonvention), alles andere hört auf den Wunsch.
+- **Themen-Tür statt Zyklus.** Drei benannte Zustände (System/Hell/Dunkel)
+  mit Häkchen: ein Tipp zum Ziel, kein Raten über Icon-Folgen.
+- **Sheet mit Griff & Safe-Area.** Das mobile Sheet trägt jetzt den
+  Plattform-Griff und respektiert `env(safe-area-inset-*)`; Geometrie folgt
+  der echten Chrome (48 px Kopf, 32 px Status).
+- **Korrektur zu D6:** Der Overlay-Code fehlte in `ce4daa6` (Script-Verlust
+  beim Snapshot-Rollback, unbemerkt commit-t). Mit diesem Stand ist D6
+  wirklich gebaut – inklusive Drop eines `.masswerk` aus dem Explorer-losen
+  Browser-Drag, das vorher stumm ignoriert wurde.
+- **Sample getauscht:** `public/beispiel.png` (Blueprint-Flachlage mit
+  Holzlineal, Messschieber, Lagern, Zahnrad) ersetzt die Werkbank-JPG;
+  READMEs/DESIGN beschreiben das echte Bild.
 
 ---
 

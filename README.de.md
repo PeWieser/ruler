@@ -41,9 +41,9 @@ npm run dev      # http://localhost:3000
 ```
 
 Kein Bild zur Hand? **„Beispielbild laden"** im Leerzustand: eine fotografierte
-Werkbank-Szene (`public/samples/beispiel.jpg`) mit Stahl-Lineal, Messschieber
-und Aluminium-Blöcken – ein natürliches Ziel für Kalibrieren, Begradigen und
-Zählen.
+Flachlage auf Blueprint-Papier (`public/beispiel.png`) mit Holzlineal,
+Messschieber, Kugellagern, Zahnrad und Schrauben – natürliche Ziele für
+Kalibrieren, Begradigen und Zählen.
 
 ## Tastatur
 
@@ -77,7 +77,7 @@ sind selbst gehostet.
 
 - `src/lib/measure/` – Geometrie, Bildverarbeitung, Rendering, Export, Store
 - `src/components/editor/` – Bühne, Leisten, Panel, Tooltips, Kürzel-Overlay
-- `public/samples/beispiel.jpg` – eingebautes Beispielfoto (Werkbank)
+- `public/beispiel.png` – eingebautes Beispielbild (Blueprint-Flachlage)
 
 Design-Grundsätze und das vollständige Review-Protokoll: [`DESIGN.md`](DESIGN.md)
 sowie die verbindliche Verfassung [`DESIGN_GUIDELINES.md`](DESIGN_GUIDELINES.md)

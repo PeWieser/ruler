@@ -62,38 +62,38 @@ export default function EmptyState({
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0B0B0E]">
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--mw-surface-1)]">
       <div className="flex w-full max-w-sm flex-col items-center px-8 text-center">
         <AppTile />
 
-        <h1 className="text-[17px] font-semibold tracking-[-0.015em] text-white/90">
+        <h1 className="text-[17px] font-semibold tracking-[-0.015em] text-[var(--mw-text)]">
           {tr("Präzise vermessen")}
         </h1>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-white/40">
+        <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--mw-text-faint)]">
           {tr("Bild öffnen, Maßstab setzen, in echten Einheiten messen.")}
         </p>
 
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="mt-6 rounded-[10px] bg-[#3B6DED] px-4.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#4578F0] active:bg-[#2F5BD0]"
+          className="mt-6 rounded-[10px] bg-[var(--mw-accent)] px-4.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[var(--mw-accent-strong)] active:bg-[var(--mw-accent-strong)]"
           style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(59,109,237,0.28)" }}
         >
           {tr("Bild öffnen")}
         </button>
-        <p className="mt-3 text-[11.5px] text-white/30">
+        <p className="mt-3 text-[11.5px] text-[var(--mw-text-ghost)]">
           {tr("Datei hierher ziehen oder mit Strg+V einfügen")}
         </p>
 
         <button
           type="button"
           onClick={onSample}
-          className="mt-6 rounded-lg px-3 py-1.5 text-[12.5px] text-[#8AB4FF] transition-colors hover:bg-white/[0.06]"
+          className="mt-6 rounded-lg px-3 py-1.5 text-[12.5px] text-[var(--mw-accent-text)] transition-colors hover:bg-[var(--mw-hover)]"
         >
           {tr("Beispielbild laden")}
         </button>
 
-        <p className="mt-10 text-[11px] text-white/22">
+        <p className="mt-10 text-[11px] text-[var(--mw-text-ghost)]">
           {tr("Alle Daten bleiben auf diesem Gerät.")}
         </p>
         <input

@@ -58,6 +58,78 @@ function Wordmark() {
   );
 }
 
+/** Erscheinungsbild (D4): eine Tür, drei benannte Zustände – kein
+    Zyklus-Raten. Ein Tipp bringt den Menschen genau dorthin, wo er hinwill. */
+function ThemeButton() {
+  const tr = useT();
+  const theme = useEditor((s) => s.theme);
+  const setTheme = useEditor((s) => s.setTheme);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("pointerdown", onDown);
+    return () => window.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
+  const opts = [
+    { id: "system", Icon: Monitor, label: tr("System") },
+    { id: "light", Icon: Sun, label: tr("Hell") },
+    { id: "dark", Icon: Moon, label: tr("Dunkel") },
+  ] as const;
+  const Cur = theme === "system" ? Monitor : theme === "light" ? Sun : Moon;
+  const curLabel = opts.find((o) => o.id === theme)?.label ?? "";
+
+  return (
+    <div ref={ref} className="relative" onPointerDown={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--mw-text-dim)] transition-colors duration-150 hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)] active:bg-[var(--mw-hover-strong)]"
+        aria-label={tr("Erscheinungsbild")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        data-tip={tr("Erscheinungsbild")}
+        data-desc={curLabel}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Cur size={16} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label={tr("Erscheinungsbild")}
+          className="animate-pop-in absolute right-0 top-10 z-40 w-44 origin-top-right overflow-hidden rounded-xl border border-[var(--mw-border-strong)] bg-[var(--mw-surface-4)] p-1 shadow-xl"
+          style={{ boxShadow: "0 16px 40px var(--mw-shadow)" }}
+        >
+          {opts.map(({ id, Icon, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={theme === id}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-[var(--mw-text-dim)] transition-colors hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)]"
+              onClick={() => {
+                setTheme(id);
+                setOpen(false);
+              }}
+            >
+              <Icon size={15} className="text-[var(--mw-text-faint)]" />
+              <span className="flex-1">{label}</span>
+              {theme === id && (
+                <Check size={14} className="text-[var(--mw-accent-text)]" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TopBar({
   onOpenImage,
 }: {
@@ -141,12 +213,6 @@ export default function TopBar({
     }
   };
 
-  const themeNext =
-    st.theme === "system" ? "light" : st.theme === "light" ? "dark" : "system";
-  const themeLabel = tr(
-    st.theme === "system" ? "System" : st.theme === "light" ? "Hell" : "Dunkel",
-  );
-
   const iconBtn =
     "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--mw-text-dim)] transition-colors duration-150 hover:bg-[var(--mw-hover)] hover:text-[var(--mw-text)] active:bg-[var(--mw-hover-strong)] disabled:opacity-30";
   const toggleBtn = (on: boolean) =>
@@ -169,22 +235,7 @@ export default function TopBar({
       <header className="flex h-12 items-center gap-2 border-b border-[var(--mw-border)] bg-[var(--mw-surface-1)] px-3">
         <Wordmark />
         <span className="flex-1" />
-        <button
-          type="button"
-          className={iconBtn}
-          aria-label={tr("Erscheinungsbild")}
-          data-tip={tr("Erscheinungsbild")}
-          data-desc={themeLabel}
-          onClick={() => st.setTheme(themeNext)}
-        >
-          {st.theme === "system" ? (
-            <Monitor size={16} />
-          ) : st.theme === "light" ? (
-            <Sun size={16} />
-          ) : (
-            <Moon size={16} />
-          )}
-        </button>
+        <ThemeButton />
         <button
           type="button"
           className={iconBtn}
@@ -655,22 +706,7 @@ export default function TopBar({
           )}
         </div>
 
-        <button
-          type="button"
-          className={iconBtn}
-          aria-label={tr("Erscheinungsbild")}
-          data-tip={tr("Erscheinungsbild")}
-          data-desc={themeLabel}
-          onClick={() => st.setTheme(themeNext)}
-        >
-          {st.theme === "system" ? (
-            <Monitor size={16} />
-          ) : st.theme === "light" ? (
-            <Sun size={16} />
-          ) : (
-            <Moon size={16} />
-          )}
-        </button>
+        <ThemeButton />
         <button
           type="button"
           className={iconBtn}
