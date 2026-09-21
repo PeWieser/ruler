@@ -411,6 +411,22 @@ Bewusst offen (notiert, nicht gebaut):
 - **N4 · Scrims bleiben neutral dunkel** (Tastatur-Overlay, Drop-Schleier):
   Ein Schleier ist Bühnenlicht, keine Chrome – Hellwürde wäre hier falsch.
 
+## 3e · Begradigen, wirklich repariert (Runde 5b)
+
+Zwei Wurzelfehler, beide strukturell behoben:
+- **Ausgeblendetes Bild:** Der WebGL-Geometriepfad rotierte ohne den
+  Crop-to-Fill-Zoom der CPU-Kette; der Bereichstest im Shader lieferte
+  transparente Keile bis hin zu wirkungslosen Zwischenständen. Jetzt ist
+  `renderOriented` (CPU) die EINZIGE Geometrie-Wahrheit – dieselbe
+  Mathematik wie Geisterhintergrund und Punkt-Mapping – und die GPU
+  legt nur noch Linse + Filter auf das fertig ausgerichtete Basisbild.
+  Was die Bühne zeigt, ist exakt das, was die Pipeline hält.
+- **Grad daneben:** Horizont-Punkte liefen durch den Edge-Snap
+  (`computeEffective`), der Endpunkte an Ecken/Vertices zieht und den
+  gemessenen Winkel um einige Grad verfälschte. Die Begradigung misst
+  jetzt den rohen Cursorpunkt; auch die Vorschaulinie folgt ihm. Snap
+  bleibt, wo er hingehört: beim Zeichnen von Messungen.
+
 ---
 
 ## 4 · Messlatte für jede künftende Änderung
