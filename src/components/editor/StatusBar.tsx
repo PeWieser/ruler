@@ -60,7 +60,7 @@ function useHint(tr: TFn): string {
     case "line":
       return n === 0 ? tr("Startpunkt setzen") : tr("Endpunkt setzen");
     case "polyline":
-      return n === 0 ? "Startpunkt setzen" : tr("Punkt {n} setzen · Enter beendet", { n });
+      return n === 0 ? tr("Startpunkt setzen") : tr("Punkt {n} setzen · Enter beendet", { n });
     case "lot":
       return n === 0
         ? tr("Referenzlinie: Punkt 1 von 2")
@@ -74,7 +74,9 @@ function useHint(tr: TFn): string {
     case "rect":
       return n === 0 ? tr("Erste Ecke setzen") : tr("Gegenüberliegende Ecke setzen");
     case "ellipse":
-      return n === 0 ? tr("Erste Ecke der Umfassungsbox") : "Gegenüberliegende Ecke setzen";
+      return n === 0
+        ? tr("Erste Ecke der Umfassungsbox")
+        : tr("Gegenüberliegende Ecke setzen");
     case "circle3":
       return tr("Randpunkt {n} von 3", { n: n + 1 });
     case "polygon":

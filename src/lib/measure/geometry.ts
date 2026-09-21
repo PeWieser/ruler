@@ -517,9 +517,9 @@ export function measurementStats(m: Measurement): Stat[] {
       const e = ellipseFromBBox(p[0], p[1]);
       return [
         { label: t("Fläche"), kind: "area", raw: Math.PI * e.rx * e.ry },
-        { label: "Umfang ≈", kind: "length", raw: ellipseCircumference(e.rx, e.ry) },
-        { label: "Achse a", kind: "length", raw: e.rx * 2 },
-        { label: "Achse b", kind: "length", raw: e.ry * 2 },
+        { label: t("Umfang ≈"), kind: "length", raw: ellipseCircumference(e.rx, e.ry) },
+        { label: t("Achse a"), kind: "length", raw: e.rx * 2 },
+        { label: t("Achse b"), kind: "length", raw: e.ry * 2 },
       ];
     }
     case "circle3": {
@@ -528,7 +528,7 @@ export function measurementStats(m: Measurement): Stat[] {
       if (!c) return [];
       return [
         { label: t("Radius"), kind: "length", raw: c.r },
-        { label: "Durchmesser", kind: "length", raw: 2 * c.r },
+        { label: t("Durchmesser"), kind: "length", raw: 2 * c.r },
         { label: t("Fläche"), kind: "area", raw: Math.PI * c.r * c.r },
         { label: t("Umfang"), kind: "length", raw: 2 * Math.PI * c.r },
       ];
@@ -541,7 +541,7 @@ export function measurementStats(m: Measurement): Stat[] {
           ]
         : [];
     case "count":
-      return [{ label: "Anzahl", kind: "count", raw: p.length }];
+      return [{ label: t("Anzahl"), kind: "count", raw: p.length }];
     default:
       return [];
   }
@@ -610,11 +610,11 @@ export function primaryLabel(m: Measurement, calib: Calibration | null): string 
     case "ellipse":
       return `A = ${s}`;
     case "circle3": {
-      const dia = stats.find((x) => x.label === "Durchmesser");
+      const dia = stats.find((x) => x.label === t("Durchmesser"));
       return dia ? `Ø ${fmtStatFull(dia, calib)}` : s;
     }
     case "count":
-      return `${m.points.length} ${m.points.length === 1 ? "Objekt" : "Objekte"}`;
+      return `${m.points.length} ${m.points.length === 1 ? t("Objekt") : t("Objekte")}`;
     case "angle":
       return `${s}`;
     case "crossangle":

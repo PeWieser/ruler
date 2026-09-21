@@ -51,7 +51,7 @@ export default function Page() {
     try {
       const res = await fetch("/beispiel.png");
       const blob = await res.blob();
-      const file = new File([blob], "werkbank.jpg", { type: "image/jpeg" });
+      const file = new File([blob], "blueprint.png", { type: "image/png" });
       const img = await loadImageFile(file);
       useEditor.getState().setLoaded(img);
       useEditor.getState().setBanner(
@@ -114,9 +114,13 @@ export default function Page() {
     };
   }, [openFile]);
 
-  // <html lang> folgt der Locale
+  // <html lang> und Fenstertitel folgen der Locale
   useEffect(() => {
     document.documentElement.lang = locale;
+    document.title =
+      locale === "de"
+        ? "MaßWerk – Präzise Bildvermessung"
+        : "MaßWerk – Precise Image Measurement";
   }, [locale]);
 
   // Erscheinungsbild: data-theme am Root, System-Wunsch folgt dem OS live

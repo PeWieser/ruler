@@ -384,6 +384,33 @@ mit Griffen und Cursor-Versprechen; Einzelobjekt-Flächenliste im Panel.
   Pipeline-Zwischenstand mit alten Maßen wird kurz skaliert gezeigt statt
   als dunkles Loch; fällt eine Quelle aus, springt das Original ein.
 
+## 3d · Perfektionisten-Pass (Audit-Runde 5) – Sofortfixes & bewusste Reste
+
+Sofort gefixt (Commit dieser Runde):
+- **Sample-Identität:** `new File(..., "blueprint.png", image/png)` – der
+  innere Dateiname erscheint in UI und Exportnamen; „werkbank.jpg" für ein
+  PNG war eine Lüge im Speicher.
+- **i18n-Lecks geschlossen:** Statistik-Labels der Geometrie („Umfang ≈",
+  „Achse a/b", „Durchmesser", „Anzahl"), Zähl-Chips („Objekt/Objekte") und
+  zwei StatusBar-Hinweise liefen roh Deutsch an `t()`/`tr()` vorbei;
+  Durchmesser-Vergleich vergleicht jetzt sprachneutral über `t()`.
+- **Esc schließt jede Tür:** Themen-, Export-, Maßstab- und Overflow-Popover
+  der Kopfleiste folgen der Plattform-Konvention (Escape = zu).
+- **Fenstertitel folgt der Sprache** (`document.title` im Locale-Effekt).
+- **theme-color-Meta folgt dem Thema:** `applyTheme()` setzt das Meta ohne
+  Media-Query – die Mobile-Browser-Chrome trägt das gewählte Thema, nicht
+  das des OS; Boot-Wert kommt aus `layout.tsx`.
+
+Bewusst offen (notiert, nicht gebaut):
+- **N1 · Fokus-Rückgabe:** Popover geben den Fokus beim Schließen nicht an
+  ihren Auslöser zurück (Tastatur-Perfektionismus; Kandidat Runde 6).
+- **N2 · Media-themeColor-Metas** bleiben als Pre-JS-Fallback neben dem
+  data-mw-Meta – vor dem Boot-Script weiß niemand etwas vom Wunsch.
+- **N3 · Sitzungsname + Ungesichert-Punkt** im Fenstertitel bleiben bewusst
+  dem Desktop-Plan vorbehalten (DESKTOP.md §2), nicht der Web-Chrome.
+- **N4 · Scrims bleiben neutral dunkel** (Tastatur-Overlay, Drop-Schleier):
+  Ein Schleier ist Bühnenlicht, keine Chrome – Hellwürde wäre hier falsch.
+
 ---
 
 ## 4 · Messlatte für jede künftende Änderung

@@ -397,6 +397,10 @@ export function applyTheme(t: "system" | "light" | "dark") {
         : "light"
       : t;
   document.documentElement.dataset.theme = resolved;
+  // Mobile-Browser-Chrome soll zum gewählten Thema passen, nicht zum OS
+  document
+    .querySelector('meta[name="theme-color"][data-mw]')
+    ?.setAttribute("content", resolved === "dark" ? "#131317" : "#F6F6F7");
 }
 
 export const useEditor = create<EditorState>()((set, get) => {

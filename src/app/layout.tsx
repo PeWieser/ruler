@@ -32,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        <meta name="theme-color" data-mw content="#F6F6F7" />
       </head>
       <body className="antialiased">{children}</body>
     </html>

@@ -179,7 +179,6 @@ export const EN: Record<string, string> = {
   "Max. Fläche": "Max. area",
   "Objekte verbinden": "Merge objects",
   "Erkannt": "Detected",
-  "Objekte": "objects",
   "Gesamtfläche": "Total area",
 
   // ── Statusleiste & Live-Region ────────────────────────────────────────────
@@ -256,6 +255,13 @@ export const EN: Record<string, string> = {
     "First document saved – this session stays.",
   "Dokument loslassen": "Drop document",
   "Linie wird": "Line becomes",
+  "Umfang ≈": "Perimeter ≈",
+  "Achse a": "Axis a",
+  "Achse b": "Axis b",
+  "Durchmesser": "Diameter",
+  "Anzahl": "Count",
+  "Objekt": "object",
+  "Objekte": "objects",
   "Horizontal": "Horizontal",
   "Vertikal": "Vertical",
   "Stellt die gesamte Sitzung wieder her.": "Restores the entire session.",
