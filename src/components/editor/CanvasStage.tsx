@@ -22,6 +22,7 @@ import { glAvailable, glRenderPipeline } from "@/lib/measure/glpipe";
 import {
   IDENTITY_ORIENTATION,
   orientationActive,
+  orientedSize,
   renderOriented,
 } from "@/lib/measure/orientation";
 import { boxBlur, morphClose, otsuThreshold } from "@/lib/measure/geometry";
@@ -99,8 +100,8 @@ function pointInPolygon(p: Pt, pts: Pt[]): boolean {
   return inside;
 }
 
-/** Haben Pipeline-Zwischenstände schon die Maße der neuen Ausrichtung? */
-function srcDimsMatch(src: CanvasImageSource, w: number, h: number): boolean {
+/** Rohmaße einer Bildquelle. */
+function srcDims(src: CanvasImageSource): { w: number; h: number } {
   let sw = 0;
   let sh = 0;
   if (src instanceof HTMLCanvasElement || src instanceof ImageBitmap) {
@@ -113,9 +114,16 @@ function srcDimsMatch(src: CanvasImageSource, w: number, h: number): boolean {
     sw = src.videoWidth;
     sh = src.videoHeight;
   } else {
-    return true; // unbekannte Quelle: nicht blockieren
+    return { w: 0, h: 0 };
   }
-  return sw === w && sh === h;
+  return { w: sw, h: sh };
+}
+
+/** Haben Pipeline-Zwischenstände schon die Maße der neuen Ausrichtung? */
+function srcDimsMatch(src: CanvasImageSource, w: number, h: number): boolean {
+  const d = srcDims(src);
+  if (d.w === 0 && d.h === 0) return true; // unbekannte Quelle: nicht blockieren
+  return d.w === w && d.h === h;
 }
 
 export default function CanvasStage() {
@@ -430,6 +438,17 @@ export default function CanvasStage() {
         .then((img) => {
           imgReg.original = img;
           imgReg.processed = null;
+          if (!useEditor.getState().rawSize) {
+            const d = srcDims(img);
+            const o = useEditor.getState().orientation;
+            const bb = orientedSize(d.w, d.h, o.quarter, o.fine);
+            useEditor.setState((st2) => ({
+              rawSize: d,
+              image: st2.image
+                ? { ...st2.image, width: bb.w, height: bb.h }
+                : st2.image,
+            }));
+          }
           imgReg.capture = null;
           useEditor.getState().bumpImg();
         })
@@ -527,9 +546,8 @@ export default function CanvasStage() {
       const o0 = st.orientation;
       let base: CanvasImageSource = src;
       if (orientationActive(o0)) {
-        const rawW = o0.quarter % 2 === 1 ? H : W;
-        const rawH = o0.quarter % 2 === 1 ? W : H;
-        const c = renderOriented(src, rawW, rawH, o0);
+        const raw = srcDims(src);
+        const c = renderOriented(src, raw.w, raw.h, o0);
         if (c) base = c;
       }
 
@@ -887,10 +905,6 @@ export default function CanvasStage() {
       octx.moveTo(0, img.height / 2);
       octx.lineTo(img.width, img.height / 2);
       octx.stroke();
-      // Rahmenkante in Akzent: „Hier ist dein Bild“
-      octx.strokeStyle = "#32ADE6";
-      octx.lineWidth = 1.6 / t.scale;
-      octx.strokeRect(0, 0, img.width, img.height);
       octx.restore();
       // Glow klingt ab – Folgerender nachziehen, bis er aus ist
       if (!straightenHoldOn && glowT > 0) {
@@ -927,16 +941,9 @@ export default function CanvasStage() {
       }
     }
 
-    // Bei gedrehtem Zuschnitt (Geraderichten) endet das sichtbare Dokument am
-    // Bildrand – Überstände (weggedrehte Ecken) werden wie bei Apple Fotos
-    // ausgeblendet, statt frei auf der dunklen Bühne zu schweben.
-    const fineCrop = Math.abs(st.orientation.fine) > 1e-9;
-    if (fineCrop) {
-      octx.save();
-      octx.beginPath();
-      octx.rect(0, 0, img.width, img.height);
-      octx.clip();
-    }
+    // Rotate-and-Expand: Der Inhalt liegt exakt in seiner Bounding-Box –
+    // kein Überstand, kein Clip, kein Zuschnitt. Die Ecken gehören der
+    // Bühne, nicht einem versteckten Bildrest.
 
     const env: RenderEnv = {
       strokeW: 1.9 / t.scale,
@@ -1271,7 +1278,6 @@ export default function CanvasStage() {
     }
 
     // Zuschnitt-Clip beenden, bevor bildschirmfeste Elemente folgen
-    if (fineCrop) octx.restore();
 
     // Maßstabsbalken (Bildschirm)
     if (st.scaleBar) {
@@ -1401,9 +1407,12 @@ export default function CanvasStage() {
     const x1 = w - m;
     const x0 = x1 - barScreen;
     const y = h - m;
+    const dark = document.documentElement.dataset.theme !== "light";
+    const halo = dark ? "rgba(0,0,0,0.75)" : "rgba(255,255,255,0.9)";
+    const ink = dark ? "#FFFFFF" : "#1c1c1e";
     ctx.save();
     ctx.lineCap = "butt";
-    ctx.strokeStyle = "rgba(0,0,0,0.75)";
+    ctx.strokeStyle = halo;
     ctx.lineWidth = 4.5;
     ctx.beginPath();
     ctx.moveTo(x0, y);
@@ -1413,16 +1422,16 @@ export default function CanvasStage() {
     ctx.moveTo(x1, y - 5);
     ctx.lineTo(x1, y + 5);
     ctx.stroke();
-    ctx.strokeStyle = "#FFFFFF";
+    ctx.strokeStyle = ink;
     ctx.lineWidth = 1.8;
     ctx.stroke();
     ctx.font = '600 11.5px "Geist Mono", ui-monospace, monospace';
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     ctx.lineWidth = 3.5;
-    ctx.strokeStyle = "rgba(0,0,0,0.75)";
+    ctx.strokeStyle = halo;
     ctx.strokeText(label, (x0 + x1) / 2, y - 9);
-    ctx.fillStyle = "#FFFFFF";
+    ctx.fillStyle = ink;
     ctx.fillText(label, (x0 + x1) / 2, y - 9);
     ctx.restore();
   }

@@ -445,6 +445,24 @@ Zwei Wurzelfehler, beide strukturell behoben:
   „Bühne immer dunkel" ist auf ausdrücklichen Wunsch aufgehoben –
   das Produkt gehört dem Menschen, nicht der Konvention.
 
+## 3g · Rotate-and-Expand: kein Zuschnitt, kein Rahmen, ehrliche Ecken
+
+- **Crop-to-Fill ist raus.** Die Feinrotation zoomte bisher in das Bild
+  hinein, bis der alte Rahmen gefüllt war – der Preis waren beschnittene
+  Kanten und ein nachskalierter Maßstab. Jetzt wächst das Dokument um
+  seine Bounding-Box (Rotate-and-Expand): kein Pixel wird beschnitten,
+  kein Pixel wird skaliert, `pixelsPerUnit` bleibt unangetastet – die
+  Messung ist nach dem Begradigen exakt so wahr wie vorher.
+- **Die weggedrehten Ecken gehören der Bühne.** Sie sind leer, sichtbar
+  leer – ehrlicher als ein Zoom, der so tut, als wäre nichts gewesen.
+- **Der Akzentrahmen ist weg.** Raster + Mittellinien + Glow erklären das
+  Geraderichten weiterhin; der Rahmen war der Körper, in dem der
+  Zuschnitt sichtbar wurde (und der den Maßstabsbalken-Look dominierte).
+- **Maßstabsbalken folgt dem Thema:** weiße Tinte mit dunklem Halo auf
+  dem Studiotisch, dunkle Tinte mit hellem Halo auf dem Lighttable.
+- `rawSize` im Store ist die einzige Quelle der Originalmaße; sichtbare
+  Maße, Punkt-Mapping, Undo und Dokument-Ladung leiten sich daraus ab.
+
 ---
 
 ## 4 · Messlatte für jede künftende Änderung

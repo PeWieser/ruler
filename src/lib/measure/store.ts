@@ -29,7 +29,6 @@ import {
 import {
   IDENTITY_ORIENTATION,
   clampFine,
-  fillScale,
   normQuarter,
   orientationActive,
   orientPointFwd,
@@ -151,6 +150,9 @@ interface ViewCmd {
 
 interface EditorState {
   image: ImageMeta | null;
+  /** Rohe Originalmaße – die Wahrheit, aus der die sichtbaren Maße
+      (Bounding-Box der Ausrichtung) abgeleitet werden. */
+  rawSize: { w: number; h: number } | null;
   imageDataUrl: string | null;
   imgVersion: number;
   tool: ToolId;
@@ -269,6 +271,7 @@ const PROFILES_KEY = "mw.profiles.v1";
 
 interface PersistedSession {
   image: ImageMeta | null;
+  rawSize?: { w: number; h: number } | null;
   imageDataUrl: string | null;
   measurements: Measurement[];
   calibration: Calibration | null;
@@ -307,6 +310,7 @@ function queuePersist(get: () => EditorState) {
     const s = get();
     const data: PersistedSession = {
       image: s.image,
+      rawSize: s.rawSize,
       imageDataUrl: s.imageDataUrl,
       measurements: s.measurements,
       calibration: s.calibration,
@@ -418,22 +422,20 @@ export const useEditor = create<EditorState>()((set, get) => {
    */
   const dimsForUndo = (
     image: ImageMeta | null,
-    from: Orientation,
+    _from: Orientation,
     to: Orientation,
   ): ImageMeta | null => {
     if (!image) return null;
-    if (normQuarter(from.quarter) % 2 === normQuarter(to.quarter) % 2) return null;
-    // Rohmaße aus den aktuellen sichtbaren Maßen zurückgewinnen
-    const raw =
-      normQuarter(from.quarter) % 2 === 1
-        ? { w: image.height, h: image.width }
-        : { w: image.width, h: image.height };
-    const next = orientedSize(raw.w, raw.h, to.quarter);
+    const raw = get().rawSize;
+    if (!raw) return null;
+    const next = orientedSize(raw.w, raw.h, to.quarter, to.fine);
+    if (next.w === image.width && next.h === image.height) return null;
     return { ...image, width: next.w, height: next.h };
   };
 
   return {
     image: persisted?.image ?? null,
+    rawSize: persisted?.rawSize ?? null,
     imageDataUrl: persisted?.imageDataUrl ?? null,
     imgVersion: 0,
     tool: "select",
@@ -487,6 +489,7 @@ export const useEditor = create<EditorState>()((set, get) => {
       const reset = !sameDims && (prev.measurements.length > 0 || prev.calibration);
       set({
         image: { name: img.name, width: img.width, height: img.height },
+        rawSize: { w: img.width, h: img.height },
         imageDataUrl: img.storageDataUrl,
         imgVersion: prev.imgVersion + 1,
         measurements: sameDims ? prev.measurements : [],
@@ -552,6 +555,8 @@ export const useEditor = create<EditorState>()((set, get) => {
       const source = await loadFromDataUrl(doc.image.dataUrl);
       const w = source.naturalWidth || (source.width as number);
       const h = source.naturalHeight || (source.height as number);
+      const o = doc.orientation ?? { ...IDENTITY_ORIENTATION };
+      const dims = orientedSize(w, h, o.quarter, o.fine);
       const s = get();
       imgReg.original = source;
       imgReg.processed = null;
@@ -562,14 +567,15 @@ export const useEditor = create<EditorState>()((set, get) => {
       set({
         image: {
           name: doc.image.name || "dokument.masswerk",
-          width: w,
-          height: h,
+          width: dims.w,
+          height: dims.h,
         },
+        rawSize: { w, h },
         imageDataUrl: doc.image.dataUrl,
         imgVersion: s.imgVersion + 1,
         measurements: doc.measurements,
         calibration: doc.calibration ?? null,
-        orientation: doc.orientation ?? { ...IDENTITY_ORIENTATION },
+        orientation: o,
         lensK: doc.lensK ?? 0,
         filters: doc.filters ?? { ...DEFAULT_FILTERS },
         scaleBar: doc.scaleBar ?? true,
@@ -960,22 +966,16 @@ export const useEditor = create<EditorState>()((set, get) => {
       if (sameOrientation(next, old)) return;
 
       // Rohmaße des Originals aus den sichtbaren Maßen zurückgewinnen
-      const rawW = normQuarter(old.quarter) % 2 === 1 ? s.image.height : s.image.width;
-      const rawH = normQuarter(old.quarter) % 2 === 1 ? s.image.width : s.image.height;
+      // Rohmaße sind die Wahrheit im Store – sichtbare Maße sind Bounding-Box
+      const rawW = s.rawSize?.w ?? s.image.width;
+      const rawH = s.rawSize?.h ?? s.image.height;
       const remap = (p: Pt): Pt =>
         orientPointFwd(orientPointInv(p, rawW, rawH, old), rawW, rawH, next);
       const remapAll = (pts: Pt[]): Pt[] => pts.map(remap);
 
       // Maßstab exakt nachführen: Verhältnis der Crop-Zoomfaktoren
-      const dimsOld = orientedSize(rawW, rawH, old.quarter);
-      const dimsNew = orientedSize(rawW, rawH, next.quarter);
-      const k =
-        fillScale(next.fine, dimsNew.w, dimsNew.h) /
-        fillScale(old.fine, dimsOld.w, dimsOld.h);
-      const calibration =
-        s.calibration && Math.abs(k - 1) > 1e-12
-          ? { ...s.calibration, pixelsPerUnit: s.calibration.pixelsPerUnit * k }
-          : s.calibration;
+      // Rotate-and-Expand: kein Zoom, also bleibt der Maßstab unangetastet.
+      const calibration = s.calibration;
 
       const quarterChanged = normQuarter(next.quarter) !== normQuarter(old.quarter);
       const fineChanged = Math.abs(next.fine - old.fine) > 1e-9;
@@ -992,9 +992,21 @@ export const useEditor = create<EditorState>()((set, get) => {
         analysis: roiDropped ? { ...s.analysis, roi: null } : s.analysis,
         analysisResult: roiDropped ? null : s.analysisResult,
         calibration,
-        image: quarterChanged
-          ? { ...s.image, width: dimsNew.w, height: dimsNew.h }
-          : s.image,
+        image:
+          s.rawSize &&
+          (quarterChanged || Math.abs(next.fine - old.fine) > 1e-9)
+            ? (() => {
+                const d = orientedSize(
+                  s.rawSize!.w,
+                  s.rawSize!.h,
+                  next.quarter,
+                  next.fine,
+                );
+                return d.w === s.image.width && d.h === s.image.height
+                  ? s.image
+                  : { ...s.image, width: d.w, height: d.h };
+              })()
+            : s.image,
         imgVersion: quarterChanged ? s.imgVersion + 1 : s.imgVersion,
       });
       persist();

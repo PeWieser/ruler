@@ -44,20 +44,25 @@ export function sameOrientation(a: Orientation, b: Orientation): boolean {
   );
 }
 
-/** Sichtbare Bildgröße nach der Ausrichtung (Feinrotation ändert sie nicht). */
-export function orientedSize(w0: number, h0: number, quarter: number): { w: number; h: number } {
-  return normQuarter(quarter) % 2 === 1 ? { w: h0, h: w0 } : { w: w0, h: h0 };
-}
-
-/**
- * Zoomfaktor, mit dem die Feinrotation den Rahmen füllt (Crop-to-Fill):
- * der sichtbare w×h-Ausschnitt muss vollständig vom gedrehten Bild bedeckt
- * bleiben. s = cos θ + max(w/h, h/w) · sin θ.
- */
-export function fillScale(fineDeg: number, w: number, h: number): number {
-  const t = Math.abs(fineDeg) * DEG;
-  if (t < 1e-9 || w <= 0 || h <= 0) return 1;
-  return Math.cos(t) + Math.max(w / h, h / w) * Math.sin(t);
+/** Sichtbare Bildgröße nach der Ausrichtung: die Bounding-Box der
+    gedrehten Ansicht. Nichts wird beschnitten, nichts gezoomt – das
+    Dokument wächst ehrlich um die weggedrehten Ecken (Rotate-and-Expand).
+    Der Maßstab (Pixel pro Einheit) bleibt dadurch exakt erhalten. */
+export function orientedSize(
+  w0: number,
+  h0: number,
+  quarter: number,
+  fine = 0,
+): { w: number; h: number } {
+  const q = normQuarter(quarter);
+  const w1 = q % 2 === 1 ? h0 : w0;
+  const h1 = q % 2 === 1 ? w0 : h0;
+  const t = Math.abs(fine) * DEG;
+  if (t < 1e-9) return { w: w1, h: h1 };
+  return {
+    w: Math.ceil(w1 * Math.cos(t) + h1 * Math.sin(t)),
+    h: Math.ceil(w1 * Math.sin(t) + h1 * Math.cos(t)),
+  };
 }
 
 function rot(p: Pt, rad: number): Pt {
@@ -72,31 +77,23 @@ function rot(p: Pt, rad: number): Pt {
  */
 export function orientPointFwd(p: Pt, w0: number, h0: number, o: Orientation): Pt {
   const q = normQuarter(o.quarter);
-  const { w: w1, h: h1 } = orientedSize(w0, h0, q);
+  const { w: w1, h: h1 } = orientedSize(w0, h0, q, o.fine);
   const c0 = { x: w0 / 2, y: h0 / 2 };
   const c1 = { x: w1 / 2, y: h1 / 2 };
   let d = { x: p.x - c0.x, y: p.y - c0.y };
   if (q !== 0) d = rot(d, q * Math.PI / 2);
-  if (Math.abs(o.fine) > 1e-9) {
-    const s = fillScale(o.fine, w1, h1);
-    d = rot(d, o.fine * DEG);
-    d = { x: d.x * s, y: d.y * s };
-  }
+  if (Math.abs(o.fine) > 1e-9) d = rot(d, o.fine * DEG);
   return { x: c1.x + d.x, y: c1.y + d.y };
 }
 
 /** Sichtbare Koordinaten → Rohkoordinaten (Umkehrung von orientPointFwd). */
 export function orientPointInv(p: Pt, w0: number, h0: number, o: Orientation): Pt {
   const q = normQuarter(o.quarter);
-  const { w: w1, h: h1 } = orientedSize(w0, h0, q);
+  const { w: w1, h: h1 } = orientedSize(w0, h0, q, o.fine);
   const c0 = { x: w0 / 2, y: h0 / 2 };
   const c1 = { x: w1 / 2, y: h1 / 2 };
   let d = { x: p.x - c1.x, y: p.y - c1.y };
-  if (Math.abs(o.fine) > 1e-9) {
-    const s = fillScale(o.fine, w1, h1);
-    d = { x: d.x / s, y: d.y / s };
-    d = rot(d, -o.fine * DEG);
-  }
+  if (Math.abs(o.fine) > 1e-9) d = rot(d, -o.fine * DEG);
   if (q !== 0) d = rot(d, -q * Math.PI / 2);
   return { x: c0.x + d.x, y: c0.y + d.y };
 }
@@ -155,7 +152,7 @@ export function renderOriented(
 ): HTMLCanvasElement | null {
   if (!orientationActive(o)) return null;
   const q = normQuarter(o.quarter);
-  const { w: w1, h: h1 } = orientedSize(w0, h0, q);
+  const { w: w1, h: h1 } = orientedSize(w0, h0, q, o.fine);
   const out = document.createElement("canvas");
   out.width = Math.max(1, w1);
   out.height = Math.max(1, h1);
@@ -164,43 +161,7 @@ export function renderOriented(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.translate(w1 / 2, h1 / 2);
-  if (Math.abs(o.fine) > 1e-9) {
-    const s = fillScale(o.fine, w1, h1);
-    ctx.rotate(o.fine * DEG);
-    ctx.scale(s, s);
-  }
-  if (q !== 0) ctx.rotate(q * Math.PI / 2);
-  ctx.drawImage(source, -w0 / 2, -h0 / 2, w0, h0);
-  return out;
-}
-
-/**
- * Wie renderOriented, aber OHNE Crop-Zoom: das vollständig gedrehte Bild auf
- * seinerBounding-Box. Dient beim Geraderichten als Hintergrund unter dem
- * Zuschnittrahmen – der Nutzer sieht, dass nichts „verloren" geht, sondern
- * nur außerhalb des Rahmens liegt (wie in Apple Fotos' Zuschneidemodus).
- */
-export function renderOrientedFull(
-  source: CanvasImageSource,
-  w0: number,
-  h0: number,
-  o: Orientation,
-): HTMLCanvasElement | null {
-  if (Math.abs(o.fine) < 1e-9) return null;
-  const q = normQuarter(o.quarter);
-  const { w: w1, h: h1 } = orientedSize(w0, h0, q);
-  const t = Math.abs(o.fine) * DEG;
-  const wu = Math.ceil(w1 * Math.cos(t) + h1 * Math.sin(t));
-  const hu = Math.ceil(w1 * Math.sin(t) + h1 * Math.cos(t));
-  const out = document.createElement("canvas");
-  out.width = Math.max(1, wu);
-  out.height = Math.max(1, hu);
-  const ctx = out.getContext("2d");
-  if (!ctx) return null;
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.translate(wu / 2, hu / 2);
-  ctx.rotate(o.fine * DEG);
+  if (Math.abs(o.fine) > 1e-9) ctx.rotate(o.fine * DEG);
   if (q !== 0) ctx.rotate(q * Math.PI / 2);
   ctx.drawImage(source, -w0 / 2, -h0 / 2, w0, h0);
   return out;
