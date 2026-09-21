@@ -370,6 +370,19 @@ mit Griffen und Cursor-Versprechen; Einzelobjekt-Flächenliste im Panel.
 - **Sample getauscht:** `public/beispiel.png` (Blueprint-Flachlage mit
   Holzlineal, Messschieber, Lagern, Zahnrad) ersetzt die Werkbank-JPG;
   READMEs/DESIGN beschreiben das echte Bild.
+- **Thema als Lichtschalter (Runde 4).** `light-dark()` in Custom
+  Properties löst bei dynamischem `color-scheme`-Wechsel browserseitig
+  unzuverlässig neu auf – der Schalter wirkte tot. Jetzt: explizite
+  Token-Blöcke `:root` / `:root[data-theme="dark"]`, gesetzt per
+  `applyTheme()` (System-Wunsch folgt dem OS live via matchMedia) und ein
+  Boot-Script in `layout.tsx`, das data-theme vor der ersten Paint setzt
+  (kein Flash). Deterministisch in jedem Browser.
+- **Begradigen: Achswahl + niemals dunkle Bühne.** Der Horizont-Hinweis
+  trägt jetzt die Entscheidung „Linie wird Horizontal | Vertikal" direkt
+  am Ort der Handlung (`straightenDeltaAxis`); vorher riet der Winkel.
+  Und die Bühne zeichnet immer, solange eine Quelle existiert – ein
+  Pipeline-Zwischenstand mit alten Maßen wird kurz skaliert gezeigt statt
+  als dunkles Loch; fällt eine Quelle aus, springt das Original ein.
 
 ---
 

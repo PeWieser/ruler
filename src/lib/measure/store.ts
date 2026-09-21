@@ -37,6 +37,7 @@ import {
   orientedSize,
   sameOrientation,
   straightenDelta,
+  straightenDeltaAxis,
   type Orientation,
 } from "./orientation";
 import {
@@ -183,6 +184,10 @@ interface EditorState {
   /** Erscheinungsbild: System folgt, Hell/Dunkel setzen sich durch (D4). */
   theme: "system" | "light" | "dark";
   setTheme: (t: "system" | "light" | "dark") => void;
+  /** Zielachse der Automatischen Begradigung: gezeichnete Linie wird
+      horizontal oder vertikal – der Mensch entscheidet, nicht der Winkel. */
+  horizonAxis: "h" | "v";
+  setHorizonAxis: (a: "h" | "v") => void;
   past: Snap[];
   future: Snap[];
   viewCmd: ViewCmd;
@@ -380,6 +385,20 @@ const DEFAULT_ANALYSIS: AnalysisState = {
   closeRadius: 2,
 };
 
+/** Erscheinungsbild am DOM anwenden: data-theme am Root steuert die
+    Token-Blöcke – deterministisch, ohne light-dark()-Dynamik. */
+export function applyTheme(t: "system" | "light" | "dark") {
+  if (typeof document === "undefined") return;
+  const resolved =
+    t === "system"
+      ? typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+      : t;
+  document.documentElement.dataset.theme = resolved;
+}
+
 export const useEditor = create<EditorState>()((set, get) => {
   const persist = () => queuePersist(get);
 
@@ -433,6 +452,7 @@ export const useEditor = create<EditorState>()((set, get) => {
     rectify: null,
     rectifyUndo: false,
     horizon: null,
+    horizonAxis: "h",
     straightenHold: false,
     straightenGlowUntil: 0,
     noteEditingId: null,
@@ -1172,13 +1192,19 @@ export const useEditor = create<EditorState>()((set, get) => {
         set({ horizon: pts });
         return;
       }
-      const fine = straightenDelta(s.orientation.fine, pts[0], pts[1]);
+      const fine = straightenDeltaAxis(
+        s.orientation.fine,
+        pts[0],
+        pts[1],
+        s.horizonAxis,
+      );
       set({ horizon: null });
       s.pushHistory();
       get().setOrientation({ fine });
     },
 
     cancelHorizon: () => set({ horizon: null }),
+    setHorizonAxis: (a) => set({ horizonAxis: a }),
 
     setStraightenHold: (v) =>
       set((s) => ({
@@ -1205,9 +1231,7 @@ export const useEditor = create<EditorState>()((set, get) => {
       } catch {
         // ohne Persistenz bleibt der Wunsch trotzdem gesetzt
       }
-      if (typeof document !== "undefined") {
-        document.documentElement.style.colorScheme = t === "system" ? "" : t;
-      }
+      applyTheme(t);
       set({ theme: t });
     },
     fireViewCmd: (cmd) => set((s) => ({ viewCmd: { seq: s.viewCmd.seq + 1, cmd } })),

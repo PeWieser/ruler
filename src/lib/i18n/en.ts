@@ -255,6 +255,9 @@ export const EN: Record<string, string> = {
   "Erstes Dokument gesichert – diese Sitzung bleibt.":
     "First document saved – this session stays.",
   "Dokument loslassen": "Drop document",
+  "Linie wird": "Line becomes",
+  "Horizontal": "Horizontal",
+  "Vertikal": "Vertical",
   "Stellt die gesamte Sitzung wieder her.": "Restores the entire session.",
 
   // ── Dokumente (P3) & Analyse-Details (P7) ─────────────────────────────────

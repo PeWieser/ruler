@@ -11,7 +11,7 @@ import StatusBar from "@/components/editor/StatusBar";
 import EmptyState from "@/components/editor/EmptyState";
 import TooltipLayer from "@/components/editor/TooltipLayer";
 import ShortcutOverlay from "@/components/editor/ShortcutOverlay";
-import { useEditor } from "@/lib/measure/store";
+import { applyTheme, useEditor } from "@/lib/measure/store";
 import { useLocale, useT } from "@/lib/i18n";
 import { imageFileFromDataTransfer, loadImageFile } from "@/lib/measure/loadImage";
 
@@ -119,11 +119,16 @@ export default function Page() {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  // Erscheinungsbild: gesetzter Wunsch gilt ab erster Paint (D4)
+  // Erscheinungsbild: data-theme am Root, System-Wunsch folgt dem OS live
   const theme = useEditor((s) => s.theme);
   useEffect(() => {
-    document.documentElement.style.colorScheme =
-      theme === "system" ? "" : theme;
+    applyTheme(theme);
+    if (theme !== "system") return;
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    if (!mq) return;
+    const onChange = () => applyTheme("system");
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
   }, [theme]);
 
   // Banner blendet sich selbst aus

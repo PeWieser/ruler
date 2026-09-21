@@ -19,9 +19,20 @@ export const viewport: Viewport = {
   ],
 };
 
+/** Setzt data-theme VOR der ersten Paint – kein Hell/Dunkel-Flash beim
+    Laden, egal was das OS sagt oder zuletzt gewünscht war. */
+const THEME_BOOT = `(function(){try{var t=localStorage.getItem("mw-theme");var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.setAttribute("data-theme",d?"dark":"light");}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="de" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html
+      lang="de"
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body className="antialiased">{children}</body>
     </html>
   );

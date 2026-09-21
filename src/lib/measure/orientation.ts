@@ -120,6 +120,21 @@ export function straightenDelta(currentFine: number, a: Pt, b: Pt): number {
   return Math.round(clampFine(currentFine + (primary - deg)) * 10) / 10;
 }
 
+/** Wie straightenDelta, aber die Zielachse entscheidet der Mensch:
+    "h" richtet die gezeichnete Linie horizontal aus, "v" vertikal. */
+export function straightenDeltaAxis(
+  currentFine: number,
+  a: Pt,
+  b: Pt,
+  axis: "h" | "v",
+): number {
+  let deg = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+  // auf (−90, 90] normalisieren
+  deg = ((((deg + 90) % 180) + 180) % 180) - 90;
+  const target = axis === "h" ? 0 : deg >= 0 ? 90 : -90;
+  return Math.round(clampFine(currentFine + (target - deg)) * 10) / 10;
+}
+
 /**
  * Rendert das ausgerichtete Bild in ein neues Canvas (GPU-beschleunigt über
  * drawImage – schnell genug für den Live-Regler). Gibt null zurück, wenn die

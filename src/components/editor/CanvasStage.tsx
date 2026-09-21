@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MoveHorizontal, MoveVertical } from "lucide-react";
 import { create } from "zustand";
 import { useEditor, imgReg, analysisReg } from "@/lib/measure/store";
 import {
@@ -562,6 +563,7 @@ export default function CanvasStage() {
         imgReg.lensK = st.lensK;
         imgReg.processed = glRes.processed;
         refreshCapture(glRes.processed, W, H);
+        scheduleDraw();
         return;
       }
 
@@ -818,6 +820,10 @@ export default function CanvasStage() {
     // Während teurer Umbauten (Filter/Objektiv) kann die Quelle kurz hinter
     // den neuen Maßen zurückbleiben – dann lieber eine dunkle Bühne zeigen
     // als ein verzerrtes Bild.
+    // srcReady bleibt nur Diagnose: gezeichnet wird immer, solange eine
+    // Quelle existiert – ein Zwischenstand mit alten Maßen wird kurz
+    // skaliert gezeigt statt als dunkles Loch. Ein verschwindendes Bild
+    // ist der schlimmste denkbare Zustand einer Bildbühne.
     const srcReady = !!img && !!src && srcDimsMatch(src, img.width, img.height);
     // Geraderichten sichtbar machen: Regler gehalten, Horizont-Modus aktiv
     // oder kurzer Glow nach der letzten Änderung (mit 400 ms Ausklang).
@@ -830,7 +836,7 @@ export default function CanvasStage() {
       ? 1
       : clamp((st.straightenGlowUntil - Date.now()) / 400, 0, 1);
 
-    if (img && src && srcReady) {
+    if (img && src) {
       ictx.imageSmoothingEnabled = true;
       ictx.imageSmoothingQuality = "high";
       ictx.setTransform(dpr * t.scale, 0, 0, dpr * t.scale, dpr * t.x, dpr * t.y);
@@ -849,7 +855,12 @@ export default function CanvasStage() {
         );
         ictx.globalAlpha = 1;
       }
-      ictx.drawImage(src, 0, 0, img.width, img.height);
+      try {
+        ictx.drawImage(src, 0, 0, img.width, img.height);
+      } catch {
+        // geschlossene Bitmap o. Ä.: niemals leer bleiben – Original zeigen
+        ictx.drawImage(imgReg.original ?? src, 0, 0, img.width, img.height);
+      }
     }
 
     octx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2043,12 +2054,42 @@ export default function CanvasStage() {
       <canvas ref={ovRef} className="absolute inset-0" />
       {st.horizon !== null && (
         <div
-          className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-lg bg-black/60 px-3.5 py-1.5 text-center text-xs text-white/90 shadow-lg backdrop-blur"
+          className="absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-xl bg-black/70 px-3.5 py-2 text-center text-xs text-white/90 shadow-lg backdrop-blur"
           role="status"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
-          {st.horizon.length === 0
-            ? tr("Automatisch begradigen: eine Linie entlang einer geraden Kante oder des Horizonts ziehen")
-            : tr("Zweiter Klick setzt den Endpunkt – das Bild richtet sich aus · Rechtsklick: zurück · Esc: abbrechen")}
+          <div className="pointer-events-none">
+            {st.horizon.length === 0
+              ? tr("Automatisch begradigen: eine Linie entlang einer geraden Kante oder des Horizonts ziehen")
+              : tr("Zweiter Klick setzt den Endpunkt – das Bild richtet sich aus · Rechtsklick: zurück · Esc: abbrechen")}
+          </div>
+          <div className="pointer-events-auto mt-1.5 flex items-center justify-center gap-1">
+            <span className="mr-1 text-[10.5px] uppercase tracking-[0.06em] text-white/45">
+              {tr("Linie wird")}
+            </span>
+            {(
+              [
+                { id: "h", Icon: MoveHorizontal, label: tr("Horizontal") },
+                { id: "v", Icon: MoveVertical, label: tr("Vertikal") },
+              ] as const
+            ).map(({ id, Icon, label }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={st.horizonAxis === id}
+                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                  st.horizonAxis === id
+                    ? "bg-[#32ADE6] text-black"
+                    : "bg-white/10 text-white/75 hover:bg-white/20"
+                }`}
+                onClick={() => st.setHorizonAxis(id)}
+              >
+                <Icon size={13} strokeWidth={2} />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
       {noteTarget && notePos && (

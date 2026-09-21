@@ -42,47 +42,82 @@
 }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
-  /* ── Farb-Tokens: passen sich automatisch an das Betriebssystem-/
-     Browser-Farbschema an (light-dark(Hell, Dunkel)). Die Bildbühne selbst
-     bleibt bewusst immer dunkel – wie bei professioneller Bild- und
-     Messsoftware üblich (Photoshop, Lightroom, ImageJ …) – nur die
-     Werkzeug-Chrome (Kopf-/Seitenleiste, Statuszeile) wechselt mit. ───── */
+  /* ── Farb-Tokens: Hell-Werte hier, Dunkel-Werte im Block darunter,
+     umgeschaltet über data-theme am Root (store.applyTheme + Boot-Script
+     in layout.tsx). Bewusst NICHT light-dark(): dessen dynamische
+     Auflösung in Custom Properties ist browserseitig unzuverlässig –
+     ein Themenwechsel muss sich verlassen können wie ein Lichtschalter.
+     Die Bildbühne selbst bleibt bewusst immer dunkel – wie bei
+     professioneller Bild- und Messsoftware üblich (Photoshop, Lightroom,
+     ImageJ …) – nur die Werkzeug-Chrome wechselt mit. ──────────────── */
   --mw-canvas: #0b0b0e;
+  --mw-thumb: #ffffff;
 
-  --mw-surface-0: light-dark(#ffffff, #121216); /* Werkzeugleiste */
-  --mw-surface-1: light-dark(#f6f6f7, #131317); /* Kopf-/Statuszeile */
-  --mw-surface-2: light-dark(#fafafb, #151519); /* Seitenpanel */
-  --mw-surface-3: light-dark(#ffffff, #1a1a20); /* Karten, Eingabefelder */
-  --mw-surface-4: light-dark(#ffffff, #1e1e25); /* Menüs, Tooltips, Toasts */
-  --mw-surface-sunken: light-dark(#eef0f3, #101014); /* vertiefte Eingaben */
+  --mw-surface-0: #ffffff; /* Werkzeugleiste */
+  --mw-surface-1: #f6f6f7; /* Kopf-/Statuszeile */
+  --mw-surface-2: #fafafb; /* Seitenpanel */
+  --mw-surface-3: #ffffff; /* Karten, Eingabefelder */
+  --mw-surface-4: #ffffff; /* Menüs, Tooltips, Toasts */
+  --mw-surface-sunken: #eef0f3; /* vertiefte Eingaben */
 
-  --mw-border: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.07));
-  --mw-border-strong: light-dark(rgba(0, 0, 0, 0.16), rgba(255, 255, 255, 0.14));
-  --mw-hover: light-dark(rgba(0, 0, 0, 0.045), rgba(255, 255, 255, 0.06));
-  --mw-hover-strong: light-dark(rgba(0, 0, 0, 0.07), rgba(255, 255, 255, 0.1));
+  --mw-border: rgba(0, 0, 0, 0.1);
+  --mw-border-strong: rgba(0, 0, 0, 0.16);
+  --mw-hover: rgba(0, 0, 0, 0.045);
+  --mw-hover-strong: rgba(0, 0, 0, 0.07);
 
-  --mw-text: light-dark(#1c1c1e, #f4f4f5);
-  --mw-text-dim: light-dark(rgba(0, 0, 0, 0.72), rgba(255, 255, 255, 0.62));
-  --mw-text-faint: light-dark(rgba(0, 0, 0, 0.6), rgba(255, 255, 255, 0.5));
-  --mw-text-ghost: light-dark(rgba(0, 0, 0, 0.55), rgba(255, 255, 255, 0.46));
+  --mw-text: #1c1c1e;
+  --mw-text-dim: rgba(0, 0, 0, 0.72);
+  --mw-text-faint: rgba(0, 0, 0, 0.6);
+  --mw-text-ghost: rgba(0, 0, 0, 0.55);
 
   --mw-accent: #3b6ded;
-  --mw-accent-strong: light-dark(#2f5bd0, #4578f0);
-  --mw-accent-bg: light-dark(rgba(59, 109, 237, 0.1), rgba(96, 165, 250, 0.1));
-  --mw-accent-bg-strong: light-dark(rgba(59, 109, 237, 0.18), #2b3648);
-  --mw-accent-text: light-dark(#2851c4, #8ab4ff);
-  --mw-accent-border: light-dark(rgba(59, 109, 237, 0.4), rgba(96, 165, 250, 0.4));
+  --mw-accent-strong: #2f5bd0;
+  --mw-accent-bg: rgba(59, 109, 237, 0.1);
+  --mw-accent-bg-strong: rgba(59, 109, 237, 0.18);
+  --mw-accent-text: #2851c4;
+  --mw-accent-border: rgba(59, 109, 237, 0.4);
 
-  --mw-danger-bg: light-dark(rgba(217, 48, 37, 0.1), rgba(255, 69, 58, 0.13));
-  --mw-danger-text: light-dark(#c5301f, #ff6b61);
+  --mw-danger-bg: rgba(217, 48, 37, 0.1);
+  --mw-danger-text: #c5301f;
 
-  --mw-warn-bg: light-dark(rgba(191, 111, 8, 0.12), rgba(255, 159, 10, 0.12));
-  --mw-warn-text: light-dark(#9a5b06, #ffb84c);
+  --mw-warn-bg: rgba(191, 111, 8, 0.12);
+  --mw-warn-text: #9a5b06;
 
-  --mw-shadow: light-dark(rgba(20, 20, 30, 0.14), rgba(0, 0, 0, 0.5));
+  --mw-shadow: rgba(20, 20, 30, 0.14);
 }
+/* Dunkel: explizit ueber data-theme – deterministisch in jedem Browser,
+   ohne Verlass auf dynamisches light-dark() in Custom Properties. */
+:root[data-theme="dark"] {
+  --mw-surface-sunken: #101014;
+  --mw-surface-4: #1e1e25;
+  --mw-surface-3: #1a1a20;
+  --mw-surface-2: #151519;
+  --mw-surface-1: #131317;
+  --mw-surface-0: #121216;
+  --mw-border: rgba(255, 255, 255, 0.07);
+  --mw-border-strong: rgba(255, 255, 255, 0.14);
+  --mw-hover: rgba(255, 255, 255, 0.06);
+  --mw-hover-strong: rgba(255, 255, 255, 0.1);
+  --mw-text: #f4f4f5;
+  --mw-text-dim: rgba(255, 255, 255, 0.62);
+  --mw-text-faint: rgba(255, 255, 255, 0.5);
+  --mw-text-ghost: rgba(255, 255, 255, 0.46);
+  --mw-accent-strong: #4578f0;
+  --mw-accent-bg: rgba(96, 165, 250, 0.1);
+  --mw-accent-bg-strong: #2b3648;
+  --mw-accent-text: #8ab4ff;
+  --mw-accent-border: rgba(96, 165, 250, 0.4);
+  --mw-danger-bg: rgba(255, 69, 58, 0.13);
+  --mw-danger-text: #ff6b61;
+  --mw-warn-bg: rgba(255, 159, 10, 0.12);
+  --mw-warn-text: #ffb84c;
+  --mw-shadow: rgba(0, 0, 0, 0.5);
+  --mw-thumb: #f7f7f9;
+  color-scheme: dark;
+}
+
 
 html,
 body {
@@ -199,7 +234,7 @@ body {
   height: 14px;
   margin-top: -5.5px;
   border-radius: 50%;
-  background: light-dark(#ffffff, #f7f7f9);
+  background: var(--mw-thumb);
   border: 0.5px solid rgba(0, 0, 0, 0.12);
   box-shadow:
     0 0.5px 1.5px rgba(0, 0, 0, 0.28),
@@ -218,7 +253,7 @@ body {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: light-dark(#ffffff, #f7f7f9);
+  background: var(--mw-thumb);
   border: 0.5px solid rgba(0, 0, 0, 0.12);
   box-shadow:
     0 0.5px 1.5px rgba(0, 0, 0, 0.28),
